@@ -169,27 +169,20 @@ const GalleryPage = () => {
     },
      {
       id: '24',
-      image: '/assets/images/gym2.jpg',
-      title: 'Gym',
-      category: 'facilities',
-      description: 'Providing rejuvenating massages and body fitness'
-    },
-     {
-      id: '25',
       image: '/assets/images/hallway1.jpg',
       title: 'Hallway',
       category: 'facilities',
       description: 'Beautifully designed hallway'
     },
      {
-      id: '26',
+      id: '25',
       image: '/assets/images/hallway2.jpg',
       title: 'Hallway',
       category: 'facilities',
       description: 'Beautifully designed hallway'
     },
      {
-      id: '27',
+      id: '26',
       image: '/assets/images/exterior1.jpg',
       title: 'Hotel Exterior',
       category: 'facilities',
