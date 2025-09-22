@@ -1,0 +1,351 @@
+import React, { useEffect, useMemo, useState } from "react";
+import LoadingSpinner from "../components/LoadingSpinner";
+import toast from "react-hot-toast";
+import Button from "../components/Button";
+import BookingReceipt from "./BookingReceipt";
+
+// import { useAuth } from '../contexts/AuthContext';
+// import { loadFlutterwave, openFlutterwaveCheckout } from '../lib/flutterwave';
+
+const generateReference = () =>
+  `BK-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+const BookingPage = () => {
+  // Uncomment and implement useAuth if available
+  // const { user, loading: authLoading } = useAuth();
+  const user = null;
+  const authLoading = false;
+
+  const [rooms, setRooms] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  const [form, setForm] = useState({
+    guest_name: "",
+    guest_email: "",
+    guest_phone: "",
+    room_id: "",
+    check_in: "",
+    check_out: "",
+    guests: 1,
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [receipt, setReceipt] = useState(null);
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    // Prefill from user profile when available
+    if (user) {
+      setForm((f) => ({
+        ...f,
+        guest_name: user.name || "",
+        guest_email: user.email || "",
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const loadRooms = async () => {
+      setLoadingRooms(true);
+      try {
+  const resp = await fetch("/rooms");
+        if (!resp.ok) throw new Error("Failed to fetch rooms");
+        const data = await resp.json();
+        setRooms(data);
+      } catch (err) {
+        console.error("Error fetching rooms", err);
+        setRooms([]);
+      } finally {
+        setLoadingRooms(false);
+      }
+    };
+    loadRooms();
+  }, []);
+
+  const nights = useMemo(() => {
+    if (!form.check_in || !form.check_out) return 0;
+    const ci = new Date(form.check_in);
+    const co = new Date(form.check_out);
+    const diff = (co.getTime() - ci.getTime()) / (1000 * 60 * 60 * 24);
+    return diff > 0 ? Math.round(diff) : 0;
+  }, [form.check_in, form.check_out]);
+
+  const selectedRoom = useMemo(
+    () => rooms.find((r) => r.id === form.room_id),
+    [rooms, form.room_id]
+  );
+
+  // Calculate base total and fee for display before backend response
+  const baseTotal = useMemo(() => {
+    if (!selectedRoom || nights <= 0) return 0;
+    return Number((selectedRoom.price * nights).toFixed(2));
+  }, [selectedRoom, nights]);
+  const transactionFee = useMemo(() => Number((baseTotal * 0.02).toFixed(2)), [baseTotal]);
+  const total = useMemo(() => baseTotal + transactionFee, [baseTotal, transactionFee]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+    setFormError("");
+  };
+
+  const validate = () => {
+    if (!form.guest_name.trim()) return "Please provide guest name";
+    if (!form.guest_email.trim() || !form.guest_email.includes("@"))
+      return "Please provide a valid email";
+    if (!form.guest_phone.trim()) return "Please provide phone number";
+    if (!form.check_in || !form.check_out)
+      return "Please select check-in and check-out dates";
+    if (new Date(form.check_in) >= new Date(form.check_out))
+      return "Check-out must be after check-in";
+    if (!form.room_id) return "Please select a room";
+    if (nights <= 0) return "Invalid date range";
+    return null;
+  };
+
+  const checkAvailability = async () => {
+    try {
+      const resp = await fetch(
+  `/bookings?room_id=${form.room_id}&check_in=${form.check_in}&check_out=${form.check_out}`
+      );
+      if (!resp.ok) throw new Error("Could not verify availability");
+      const bookings = await resp.json();
+      return bookings.length === 0;
+    } catch (err) {
+      console.error("Availability check failed", err);
+      toast.error("Could not verify availability, please try again");
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (authLoading) {
+      toast.loading("Waiting for authentication...");
+      return;
+    }
+
+    const err = validate();
+    if (err) {
+      setFormError(err);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const available = await checkAvailability();
+      if (!available) {
+        toast.error("Selected room is not available for the chosen dates");
+        setSubmitting(false);
+        return;
+      }
+
+      const reference = generateReference();
+
+      const payload = {
+        guest_name: form.guest_name,
+        guest_email: form.guest_email,
+        guest_phone: form.guest_phone,
+        room_id: form.room_id,
+        check_in: form.check_in,
+        check_out: form.check_out,
+        guests: form.guests,
+        status: "pending",
+        payment_status: "pending",
+        transaction_ref: reference,
+      };
+
+      // Let backend calculate totals/fee
+      const resp = await fetch("/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) throw new Error("Booking creation failed");
+      const { booking, base_total, transaction_fee, total_amount } = await resp.json();
+      toast.success("Booking created — reference: " + reference);
+
+      // Payment integration (Flutterwave)
+      try {
+        await loadFlutterwave();
+        const publicKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY;
+        if (!publicKey) throw new Error("Missing Flutterwave public key");
+        openFlutterwaveCheckout({
+          public_key: publicKey,
+          tx_ref: reference,
+          amount: total_amount,
+          currency: "NGN",
+          customer: {
+            email: form.guest_email,
+            phone_number: form.guest_phone,
+            name: form.guest_name,
+          },
+          on_success: async (res) => {
+            toast.loading("Verifying payment...");
+            const verifyResp = await fetch("/flutterwave-verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                tx_ref: reference,
+                transaction_id: res.transaction_id || res.id,
+              }),
+            });
+            const verifyJson = await verifyResp.json();
+            if (verifyResp.ok && verifyJson.status === "success") {
+              toast.success("Payment verified — booking confirmed");
+              setReceipt({
+                ...createdBooking,
+                payment_status: "paid",
+                status: "confirmed",
+              });
+              setForm((f) => ({
+                ...f,
+                room_id: "",
+                check_in: "",
+                check_out: "",
+                guests: 1,
+              }));
+            } else {
+              toast.error("Payment could not be verified. Contact support");
+            }
+          },
+          on_close: () => {
+            toast("Payment window closed");
+          },
+        });
+      } catch (err) {
+        toast.error(err.message || "Could not start payment");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message || "Booking failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (receipt) {
+    return <BookingReceipt booking={receipt} />;
+  }
+
+  return (
+    <div className="p-8">
+      <h2 className="text-3xl font-bold mb-4">Booking</h2>
+
+      <p className="mb-4">
+        Book your stay with us — select dates, room and provide guest details.
+      </p>
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 max-w-lg bg-white p-6 rounded shadow"
+        noValidate
+      >
+        {formError && (
+          <div className="bg-red-100 text-red-700 px-4 py-2 rounded mb-2 border border-red-300 animate-pulse">{formError}</div>
+        )}
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">Guest Name</label>
+            <input
+              name="guest_name"
+              value={form.guest_name}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('name') ? 'border-red-400' : ''}`}
+              aria-invalid={!!formError && formError.toLowerCase().includes('name')}
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              name="guest_email"
+              value={form.guest_email}
+              onChange={handleChange}
+              type="email"
+              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('email') ? 'border-red-400' : ''}`}
+              aria-invalid={!!formError && formError.toLowerCase().includes('email')}
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Phone</label>
+            <input
+              name="guest_phone"
+              value={form.guest_phone}
+              onChange={handleChange}
+              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('phone') ? 'border-red-400' : ''}`}
+              aria-invalid={!!formError && formError.toLowerCase().includes('phone')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 font-medium">Check-in Date</label>
+              <input
+                name="check_in"
+                value={form.check_in}
+                onChange={handleChange}
+                type="date"
+                className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('date') ? 'border-red-400' : ''}`}
+                aria-invalid={!!formError && formError.toLowerCase().includes('date')}
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 font-medium">Check-out Date</label>
+              <input
+                name="check_out"
+                value={form.check_out}
+                onChange={handleChange}
+                type="date"
+                className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('date') ? 'border-red-400' : ''}`}
+                aria-invalid={!!formError && formError.toLowerCase().includes('date')}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Room</label>
+            {loadingRooms ? (
+              <div className="flex items-center gap-2">
+                <LoadingSpinner /> Loading rooms...
+              </div>
+            ) : (
+              <select
+                name="room_id"
+                value={form.room_id}
+                onChange={handleChange}
+                className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('room') ? 'border-red-400' : ''}`}
+                aria-invalid={!!formError && formError.toLowerCase().includes('room')}
+              >
+                <option value="">Select a room</option>
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name || r.type} — ₦{r.price ?? r.amount}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Nights: {nights}</p>
+              <p className="text-sm text-gray-600">Room Price: ₦{baseTotal.toLocaleString()}</p>
+              <p className="text-sm text-gray-600">Transaction Fee (2%): ₦{transactionFee.toLocaleString()}</p>
+              <p className="text-lg font-semibold">Total: ₦{total.toLocaleString()}</p>
+            </div>
+            <div>
+              <Button type="submit" loading={submitting} variant="primary">
+                {submitting ? "Booking..." : "Book Now"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default BookingPage;
