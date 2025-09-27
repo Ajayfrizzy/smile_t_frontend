@@ -183,6 +183,13 @@ const GalleryPage = () => {
     },
      {
       id: '26',
+      image: '/assets/images/exterior.jpg',
+      title: 'Hotel Exterior',
+      category: 'facilities',
+      description: 'Beautiful exterior architecture of Smile-T Continental Hotel'
+    },
+     {
+      id: '27',
       image: '/assets/images/exterior1.jpg',
       title: 'Hotel Exterior',
       category: 'facilities',

@@ -53,34 +53,15 @@ export default function RoomsPage() {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        // Try new room inventory endpoint first
+        // Use the optimized available rooms endpoint
         const response = await apiRequest('/room-inventory/available');
-        if (response.success && response.data && response.data.length > 0) {
-          setRooms(response.data.filter(room => room.available_rooms > 0));
+        if (response && response.success && response.data && response.data.length > 0) {
+          // Data is already optimized from backend - no processing needed!
+          setRooms(response.data);
         } else {
-          // Fallback to old rooms endpoint
-          const fallbackResponse = await apiRequest('/rooms/public');
-          if (fallbackResponse.success && fallbackResponse.data && fallbackResponse.data.length > 0) {
-            // Group rooms by type and get unique room types with their details
-            const uniqueRoomTypes = fallbackResponse.data.reduce((acc, room) => {
-              if (!acc[room.type]) {
-                acc[room.type] = {
-                  room_type: room.type,
-                  price_per_night: room.price,
-                  max_occupancy: room.max_occupancy,
-                  amenities: Array.isArray(room.amenities) ? room.amenities.join(', ') : room.amenities || "Standard amenities",
-                  description: room.description || "Comfortable accommodation with modern amenities",
-                  image: getImageForRoomType(room.type),
-                  status: room.status
-                };
-              }
-              return acc;
-            }, {});
-            setRooms(Object.values(uniqueRoomTypes).filter(room => room.status === 'Available'));
-          } else {
-            // Use fallback data if both APIs don't return rooms
-            setRooms(fallbackRooms);
-          }
+          // Only use fallback data if API fails completely
+          console.warn('Using fallback room data');
+          setRooms(fallbackRooms);
         }
       } catch (error) {
         console.error('Error fetching rooms:', error);

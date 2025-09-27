@@ -184,7 +184,7 @@ const SocialPage = () => {
         </section>*/}
 
         {/* Call to Action */}
-        <section className="text-center mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-12 text-white">
+        <section className="text-center mt-16 bg-[#7B3F00] rounded-xl p-12 text-white">
           <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
           <p className="text-xl mb-8 opacity-90">
             Be part of the Smile-T Continental family and stay updated with our
@@ -199,7 +199,7 @@ const SocialPage = () => {
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all duration-200"
+                  className="w-12 h-12 bg-[#7B3F00]/20 rounded-full flex items-center justify-center hover:bg-[#FFD700]/20 transition-all duration-200"
                 >
                   <Icon className="w-6 h-6" />
                 </a>

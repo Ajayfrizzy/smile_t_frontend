@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
 import StaffManagement from '../components/StaffManagement';
-import RoomManagement from '../components/RoomManagement';
 import RoomInventoryManagement from '../components/RoomInventoryManagement';
 import DrinksManagement from '../components/DrinksManagement';
 import TransactionsAnalytics from '../components/TransactionsAnalytics';
@@ -232,8 +231,6 @@ const SuperAdminDashboard = () => {
       case 'staff':
         return <StaffManagement />;
       case 'rooms':
-        return <RoomManagement />;
-      case 'room-inventory':
         return <RoomInventoryManagement />;
       case 'drinks':
         return <DrinksManagement />;

@@ -44,10 +44,13 @@ const BookingPage = () => {
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-  const resp = await apiRequest("/rooms");
-        if (!resp.ok) throw new Error("Failed to fetch rooms");
-        const data = await resp.json();
-        setRooms(data);
+        // Use the room inventory endpoint
+        const response = await apiRequest("/room-inventory/available");
+        if (response && response.success) {
+          setRooms(response.data || []);
+        } else {
+          setRooms([]);
+        }
       } catch (err) {
         console.error("Error fetching rooms", err);
         setRooms([]);
@@ -357,9 +360,9 @@ const BookingPage = () => {
                 aria-invalid={!!formError && formError.toLowerCase().includes('room')}
               >
                 <option value="">Select a room</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name || r.type} — ₦{r.price ?? r.amount}
+                {rooms.map((r, index) => (
+                  <option key={r.id || index} value={r.id || r.room_type}>
+                    {r.name || r.type || r.room_type} — ₦{(r.price || r.amount || r.price_per_night)?.toLocaleString()}
                   </option>
                 ))}
               </select>

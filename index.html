@@ -171,8 +171,8 @@
     }
     </script>
     
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;" />
+    <!-- Security Headers (Development - allows localhost) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' https:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*;" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
@@ -202,7 +202,7 @@
         <h1>Smile-T Continental Hotel</h1>
         <p>Welcome to Smile-T Continental Hotel - Your gateway to luxury and comfort.</p>
         <p>This website requires JavaScript to function properly. Please enable JavaScript in your browser settings.</p>
-        <p>For reservations, please call us directly at <strong>+234-XXX-XXX-XXXX</strong></p>
+        <p>For reservations, please call us directly at <strong>+234-805-323-3660</strong></p>
         <p>or email us at <strong>info@smile-tcontinental.com</strong></p>
       </div>
     </noscript>
@@ -216,15 +216,15 @@
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
       "name": "Smile-T Continental Hotel",
-      "image": "https://smile-t-continental.vercel.app/assets/images/logo.svg",
-      "telephone": "+234-XXX-XXX-XXXX",
+      "image": "/assets/images/logo.svg",
+      "telephone": "+234-805-323-3660",
       "email": "info@smile-tcontinental.com",
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Your Hotel Address",
-        "addressLocality": "Your City", 
-        "addressRegion": "Your State",
-        "postalCode": "Your Postal Code",
+        "streetAddress": "7, Ganiyu Olawale Street, iyana-ejigbo, Lagos.",
+        "addressLocality": "Lagos", 
+        "addressRegion": "Lagos",
+        "postalCode": "100001",
         "addressCountry": "NG"
       },
       "geo": {
@@ -232,7 +232,7 @@
         "latitude": "9.0765",
         "longitude": "7.3986"
       },
-      "url": "https://smile-t-continental.vercel.app",
+      "url": "https://smile-tcontinental.com",
       "openingHours": "Mo-Su 00:00-24:00",
       "priceRange": "₦₦₦"
     }

@@ -31,7 +31,7 @@ const TransactionsAnalytics = () => {
 
       // Fetch bookings for analytics
       const bookingsResponse = await apiRequest('/bookings');
-      const roomsResponse = await apiRequest('/rooms');
+      const roomsResponse = await apiRequest('/room-inventory');
       const drinksResponse = await apiRequest('/transactions'); // Assuming this returns drink sales
 
       if (bookingsResponse.success && roomsResponse.success) {

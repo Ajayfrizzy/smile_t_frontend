@@ -58,6 +58,7 @@ function AppContent() {
               <Route path="/social" element={<SocialPage/>}/>
               <Route path="/staff" element={<LoginPage />} />
               <Route path="/login" element={<LoginPage />} />
+              {/* Both paths point to same component for convenience */}
               <Route path="/dashboard/superadmin" element={
                 <ErrorBoundary>
                   <ProtectedRoute requiredRole="superadmin">
@@ -80,6 +81,8 @@ function AppContent() {
                   <BarmenDashboard />
                 </ProtectedRoute>
               } />
+              {/* Debug route - can be removed in production */}
+              {/* <Route path="/debug-rooms" element={<DebugRooms />} /> */}
             </Routes>
           </FadeTransition>
         </main>

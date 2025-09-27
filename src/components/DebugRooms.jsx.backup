@@ -1,0 +1,177 @@
+import React, { useState } from 'react';
+import { apiRequest } from '../utils/api';
+
+const DebugRooms = () => {
+  const [connectionResult, setConnectionResult] = useState('');
+  const [roomDebugResult, setRoomDebugResult] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const testConnection = async () => {
+    setLoading(true);
+    setConnectionResult('Testing connection...');
+    
+    try {
+      const response = await fetch('http://localhost:5000/health');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setConnectionResult(`✅ Backend connection successful!\n${JSON.stringify(data, null, 2)}`);
+      } else {
+        setConnectionResult(`❌ Backend responded with status: ${response.status}`);
+      }
+    } catch (error) {
+      setConnectionResult(`❌ Connection failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkAllRoomData = async () => {
+    setLoading(true);
+    setRoomDebugResult('Checking all room inventory data...');
+    
+    try {
+      const response = await apiRequest('/room-inventory/debug/all');
+      const data = await response.json();
+      
+      setRoomDebugResult(`All Room Inventory Data:\n${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      setRoomDebugResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkAvailableRooms = async () => {
+    setLoading(true);
+    setRoomDebugResult('Checking available rooms...');
+    
+    try {
+      const response = await apiRequest('/room-inventory/available');
+      const data = await response.json();
+      
+      setRoomDebugResult(`Available Rooms Response:\n${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      setRoomDebugResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkTableExists = async () => {
+    setLoading(true);
+    setRoomDebugResult('Checking if room_inventory table exists...');
+    
+    try {
+      const response = await apiRequest('/room-inventory/debug/create-table');
+      const data = await response.json();
+      
+      setRoomDebugResult(`Table Check Result:\n${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      setRoomDebugResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addSampleData = async () => {
+    setLoading(true);
+    setRoomDebugResult('Adding sample room data...');
+    
+    try {
+      const response = await apiRequest('/room-inventory/debug/add-sample');
+      const data = await response.json();
+      
+      setRoomDebugResult(`Sample Data Addition Result:\n${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      setRoomDebugResult(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 text-[#7B3F00]">🔍 Room API Debug Tool</h1>
+      
+      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+        <h4 className="font-semibold text-blue-800 mb-2">🚀 Quick Start Instructions:</h4>
+        <ol className="list-decimal list-inside text-blue-700 space-y-1">
+          <li><strong>Backend:</strong> Make sure your backend is running: <code className="bg-blue-100 px-2 py-1 rounded">cd backend && npm start</code></li>
+          <li><strong>API Base URL:</strong> Should be <code className="bg-blue-100 px-2 py-1 rounded">http://localhost:5000</code></li>
+          <li><strong>Test API:</strong> Use the buttons below to check your room data</li>
+        </ol>
+      </div>
+      
+      <div className="grid gap-6">
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <h3 className="text-xl font-semibold mb-4 text-[#7B3F00]">Backend Connection Test</h3>
+          <p className="mb-4"><strong>Backend URL:</strong> http://localhost:5000</p>
+          <button 
+            onClick={testConnection}
+            disabled={loading}
+            className="bg-[#7B3F00] text-white px-4 py-2 rounded hover:bg-[#8B4513] disabled:opacity-50"
+          >
+            {loading ? 'Testing...' : 'Test Backend Connection'}
+          </button>
+          {connectionResult && (
+            <pre className="mt-4 bg-gray-100 p-4 rounded overflow-auto max-h-60 text-sm">
+              {connectionResult}
+            </pre>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <h3 className="text-xl font-semibold mb-4 text-[#7B3F00]">Room Inventory Debug</h3>
+          <div className="space-x-2 mb-4 flex flex-wrap gap-2">
+            <button 
+              onClick={checkTableExists}
+              disabled={loading}
+              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
+            >
+              1. Check Table Exists
+            </button>
+            <button 
+              onClick={addSampleData}
+              disabled={loading}
+              className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 disabled:opacity-50"
+            >
+              2. Add Sample Data
+            </button>
+            <button 
+              onClick={checkAllRoomData}
+              disabled={loading}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              3. Check All Room Data
+            </button>
+            <button 
+              onClick={checkAvailableRooms}
+              disabled={loading}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              4. Check Available Rooms
+            </button>
+          </div>
+          {roomDebugResult && (
+            <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
+              {roomDebugResult}
+            </pre>
+          )}
+        </div>
+      </div>
+      
+      <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <h4 className="font-semibold text-yellow-800 mb-2">💡 Troubleshooting Tips:</h4>
+        <ul className="list-disc list-inside text-yellow-700 space-y-1 text-sm">
+          <li>If connection fails: Make sure backend is running on port 5000</li>
+          <li>If no rooms show: Use "Add Sample Room Data" to create test data</li>
+          <li>If CORS errors: Check backend CORS configuration</li>
+          <li>If login fails: Ensure your .env file has the correct API URL</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default DebugRooms;

@@ -102,7 +102,7 @@ const LandingPage = () => {
     },
     {
       name: 'Laundry',
-      image: 'https://images.pexels.com/photos/38325/washing-machine-laundry-housework-clean-38325.jpeg',
+      image: '/assets/images/laundry.jpg',
       description: 'Professional laundry services for your convenience.',
     },
     {

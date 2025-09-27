@@ -81,9 +81,31 @@ const RoomInventoryManagement = () => {
       }
 
       if (response && response.success) {
-        await fetchRoomInventory();
+        // Optimistic update - update UI immediately without API call
+        if (modalMode === 'add') {
+          const newInventory = {
+            id: Date.now(), // Temporary ID
+            ...inventoryData,
+            room_type_details: getRoomTypeById(inventoryData.room_type_id),
+            is_active: true
+          };
+          setRoomInventory(prev => [...prev, newInventory]);
+        } else {
+          setRoomInventory(prev => prev.map(inventory => 
+            inventory.id === currentInventory.id 
+              ? { ...inventory, ...inventoryData }
+              : inventory
+          ));
+        }
         closeModal();
-        alert(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
+        
+        // Show success message without blocking UI
+        setTimeout(() => {
+          alert(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
+        }, 100);
+        
+        // Refresh data in background to sync with server
+        fetchRoomInventory();
       } else {
         setError(response?.message || `Failed to ${modalMode} room inventory`);
       }
@@ -104,8 +126,13 @@ const RoomInventoryManagement = () => {
       });
 
       if (response && response.success) {
-        await fetchRoomInventory();
-        alert('Room inventory deleted successfully!');
+        // Optimistic delete - remove from UI immediately
+        setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
+        
+        // Show success message without blocking UI
+        setTimeout(() => {
+          alert('Room inventory deleted successfully!');
+        }, 100);
       } else {
         setError(response?.message || 'Failed to delete room inventory');
       }
