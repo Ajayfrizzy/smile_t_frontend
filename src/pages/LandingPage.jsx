@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Star, Users, Camera, Instagram, Facebook, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Star, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import GoldButton from '../components/GoldButton';
@@ -60,6 +60,7 @@ const LandingPage = () => {
   ];
 
   const [currentTestimonial, setCurrentTestimonial] = React.useState(0);
+  const [expandedText, setExpandedText] = React.useState(false);
 
   // Auto-slide testimonials every 5 seconds
   React.useEffect(() => {
@@ -71,9 +72,21 @@ const LandingPage = () => {
 
   const handlePrevTestimonial = () => {
     setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
+    setExpandedText(false); // Reset expanded text when changing testimonials
   };
+  
   const handleNextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
+    setExpandedText(false); // Reset expanded text when changing testimonials
+  };
+
+  const truncateText = (text, maxLength = 120) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const toggleTextExpansion = () => {
+    setExpandedText(!expandedText);
   };
 
   const amenities = [
@@ -100,15 +113,12 @@ const LandingPage = () => {
     },
   ];
 
-  const socialMedia = [
-    { platform: 'Instagram', icon: Instagram, handle: '@smile_tcontinentalhotel', followers: '70' },
-    { platform: 'Facebook', icon: Facebook, handle: 'Smile-T Continental Hotel', followers: '18' },
-  ];
+
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen animate-fade-in">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative h-screen flex items-center justify-center overflow-hidden animate-slide-in-up">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
@@ -116,12 +126,12 @@ const LandingPage = () => {
               "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(/assets/images/hero_image.svg)",
           }}
         />
-        <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-4xl">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-[#7B3F00]">
+        <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-4xl animate-fade-in animate-delay-300">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-[#fff]">
             Welcome to<br />
-            <span className="text-[#FFD700]">Smile-T Continental Hotel</span>
+            <span className="text-[#fff]">Smile-T Continental Hotel</span>
           </h1>
-          <p className="text-xl md:text-2xl mb-8 text-[#FFD700]">
+          <p className="text-xl md:text-2xl mb-8 text-[#FFF]">
             Experience luxury, comfort, and exceptional service in the heart of the city
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -187,9 +197,9 @@ const LandingPage = () => {
       </section>
 
       {/* Gallery Preview Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#7B3F00]/5">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#7B3F00]/5 animate-slide-in-up animate-delay-200">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in animate-delay-300">
             <h2 className="text-4xl font-bold text-[#7B3F00] mb-4">Our Gallery</h2>
             <p className="text-xl text-[#7B3F00]/80 max-w-2xl mx-auto">
               Take a glimpse into the luxury and beauty that awaits you at Smile-T Continental
@@ -232,7 +242,7 @@ const LandingPage = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#FFD700]/10">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#FFD700]/10 animate-slide-in-left animate-delay-400">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-[#7B3F00] mb-4">What Our Guests Say</h2>
@@ -248,8 +258,8 @@ const LandingPage = () => {
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <div className="bg-white p-6 rounded-xl shadow-md border-2 border-[#FFD700]/40 max-w-md w-full text-center">
-              <div className="flex items-center justify-center mb-4">
+            <div className={`bg-white p-6 rounded-xl shadow-md border-2 border-[#FFD700]/40 w-full max-w-md text-center flex flex-col transition-all duration-300 ${expandedText ? 'h-auto' : 'h-64'}`}>
+              <div className="flex items-center justify-center mb-4 flex-shrink-0">
                 <img
                   src={testimonials[currentTestimonial].avatar}
                   alt={testimonials[currentTestimonial].name}
@@ -273,9 +283,24 @@ const LandingPage = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-[#7B3F00]/80 italic">
-                "{testimonials[currentTestimonial].comment}"
-              </p>
+              
+              <div className="flex-1 flex flex-col justify-center">
+                <p className="text-[#7B3F00]/80 italic mb-2">
+                  "{expandedText 
+                    ? testimonials[currentTestimonial].comment 
+                    : truncateText(testimonials[currentTestimonial].comment)
+                  }"
+                </p>
+                
+                {testimonials[currentTestimonial].comment.length > 120 && (
+                  <button
+                    onClick={toggleTextExpansion}
+                    className="text-[#FFD700] hover:text-[#FFD700]/80 text-sm font-medium transition-colors mt-2 flex-shrink-0"
+                  >
+                    {expandedText ? 'Show less' : 'Read more'}
+                  </button>
+                )}
+              </div>
             </div>
             <button
               aria-label="Next testimonial"
@@ -288,44 +313,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Social Media Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#7B3F00]/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-[#7B3F00] mb-4">Connect With Us</h2>
-            <p className="text-xl text-[#7B3F00]/80 max-w-2xl mx-auto">
-              Follow us on social media for the latest updates, special offers, and behind-the-scenes content
-            </p>
-          </div>
-          <div className="flex flex-col md:flex-row justify-center items-center gap-8 mb-8">
-            {socialMedia.map((social) => {
-              const Icon = social.icon;
-              return (
-                <div
-                  key={social.platform}
-                  className="bg-[#FFD700]/10 backdrop-blur-sm p-6 rounded-xl text-center hover:bg-[#FFD700]/20 transition-all duration-300 border-2 border-[#FFD700]/40 hover:border-[#FFD700]"
-                >
-                  <Icon className="w-12 h-12 text-[#7B3F00] mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-[#7B3F00] mb-2">{social.platform}</h3>
-                  <p className="text-[#7B3F00] mb-2">{social.handle}</p>
-                  <p className="text-sm text-[#7B3F00]/80">{social.followers} followers</p>
-                </div>
-              );
-            })}
-          </div>
-          <div className="text-center">
-            <Link to="/social">
-              <GoldButton
-                size="lg"
-                className="inline-flex items-center justify-center gap-2 bg-[#FFD700] text-[#7B3F00] px-6 py-3 rounded-md font-semibold hover:bg-[#7B3F00] hover:text-[#FFD700] transition-colors duration-300 border-none"
-              >
-                <span>Follow Us</span>
-                <Users className="w-5 h-5" />
-              </GoldButton>
-            </Link>
-          </div>
-        </div>
-      </section>
+
     </div>
   );
 };

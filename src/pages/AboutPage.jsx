@@ -2,8 +2,8 @@ import logo from "/assets/images/logo.svg";
 
 const AboutPage = () => {
   return (
-    <main className="max-w-6xl mx-auto p-6 sm:p-12">
-      <section aria-labelledby="about-heading" className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <main className="max-w-6xl mx-auto p-6 sm:p-12 animate-fade-in">
+      <section aria-labelledby="about-heading" className="bg-white shadow-lg rounded-lg overflow-hidden animate-scale-in animate-delay-200">
         <div className="md:flex">
           <div className="md:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
             <img src={logo} alt="Smile Continental logo" className="w-44 h-fit object-cover shadow-md" />

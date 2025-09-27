@@ -19,6 +19,13 @@ import ContactPage from './pages/ContactPage';
 import AboutPage from './pages/AboutPage';
 import BookingPage from './pages/BookingPage';
 import SocialPage from './pages/SocialPage';
+import LoginPage from './pages/LoginPage';
+import SuperAdminDashboard from './dashboards/SuperAdminDashboard';
+import SupervisorDashboard from './dashboards/SupervisorDashboard';
+import ReceptionistDashboard from './dashboards/ReceptionistDashboard';
+import BarmenDashboard from './dashboards/BarmenDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -30,13 +37,16 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const hideNavAndFooter = location.pathname === '/staff' || 
+                          location.pathname === '/login' || 
+                          location.pathname.startsWith('/dashboard');
+
   return (
-    <Router>
-      <ScrollToTop />
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1">
+    <div className="min-h-screen flex flex-col">
+      {!hideNavAndFooter && <Navbar />}
+      <main className="flex-1">
           <FadeTransition>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -46,11 +56,43 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/booking" element={<BookingPage />} />
               <Route path="/social" element={<SocialPage/>}/>
+              <Route path="/staff" element={<LoginPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/dashboard/superadmin" element={
+                <ErrorBoundary>
+                  <ProtectedRoute requiredRole="superadmin">
+                    <SuperAdminDashboard />
+                  </ProtectedRoute>
+                </ErrorBoundary>
+              } />
+              <Route path="/dashboard/supervisor" element={
+                <ProtectedRoute requiredRole="supervisor">
+                  <SupervisorDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard/receptionist" element={
+                <ProtectedRoute requiredRole="receptionist">
+                  <ReceptionistDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard/barmen" element={
+                <ProtectedRoute requiredRole="barmen">
+                  <BarmenDashboard />
+                </ProtectedRoute>
+              } />
             </Routes>
           </FadeTransition>
         </main>
-        <Footer />
+        {!hideNavAndFooter && <Footer />}
       </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <ScrollToTop />
+      <AppContent />
     </Router>
   );
 }

@@ -231,10 +231,10 @@ const GalleryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50 pt-16 animate-fade-in">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   {/* Header */}
-  <div className="text-center mb-12">
+  <div className="text-center mb-12 animate-slide-in-up animate-delay-200">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">Our Gallery</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Discover the beauty and elegance of Smile-T Continental Hotel through our curated collection of images
@@ -242,7 +242,7 @@ const GalleryPage = () => {
   </div>
 
         {/* Category Filter */}
-  <div className="flex flex-wrap justify-center gap-4 mb-12">
+  <div className="flex flex-wrap justify-center gap-4 mb-12 animate-slide-in-left animate-delay-300">
           {categories.map((category) => (
             <button
               key={category.value}

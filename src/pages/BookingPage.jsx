@@ -3,16 +3,12 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
 import Button from "../components/Button";
 import BookingReceipt from "./BookingReceipt";
-
-// import { useAuth } from '../contexts/AuthContext';
-// import { loadFlutterwave, openFlutterwaveCheckout } from '../lib/flutterwave';
+import { apiRequest } from "../utils/api";
 
 const generateReference = () =>
   `BK-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
 const BookingPage = () => {
-  // Uncomment and implement useAuth if available
-  // const { user, loading: authLoading } = useAuth();
   const user = null;
   const authLoading = false;
 
@@ -48,7 +44,7 @@ const BookingPage = () => {
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-  const resp = await fetch("/rooms");
+  const resp = await apiRequest("/rooms");
         if (!resp.ok) throw new Error("Failed to fetch rooms");
         const data = await resp.json();
         setRooms(data);
@@ -105,7 +101,7 @@ const BookingPage = () => {
 
   const checkAvailability = async () => {
     try {
-      const resp = await fetch(
+      const resp = await apiRequest(
   `/bookings?room_id=${form.room_id}&check_in=${form.check_in}&check_out=${form.check_out}`
       );
       if (!resp.ok) throw new Error("Could not verify availability");
@@ -156,9 +152,8 @@ const BookingPage = () => {
       };
 
       // Let backend calculate totals/fee
-      const resp = await fetch("/bookings", {
+      const resp = await apiRequest("/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!resp.ok) throw new Error("Booking creation failed");
@@ -182,9 +177,8 @@ const BookingPage = () => {
           },
           on_success: async (res) => {
             toast.loading("Verifying payment...");
-            const verifyResp = await fetch("/flutterwave-verify", {
+            const verifyResp = await apiRequest("/flutterwave-verify", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 tx_ref: reference,
                 transaction_id: res.transaction_id || res.id,
@@ -229,65 +223,108 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="p-8">
-      <h2 className="text-3xl font-bold mb-4">Booking</h2>
+    <div className="p-8 animate-fade-in">
+      <h2 className="text-3xl font-bold mb-4 text-[#7B3F00] animate-slide-in-left">Booking</h2>
 
-      <p className="mb-4">
+      <p className="mb-8 text-[#7B3F00]/80">
         Book your stay with us — select dates, room and provide guest details.
       </p>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 max-w-lg bg-white p-6 rounded shadow"
-        noValidate
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl animate-slide-in-up animate-delay-200">
+        {/* Room Image Section */}
+        <div className="order-2 lg:order-1">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <img 
+              src="/assets/images/executive_suite_room.jpg" 
+              alt="Luxury Hotel Room" 
+              className="w-full h-64 md:h-80 lg:h-96 object-cover"
+            />
+            <div className="p-6">
+              <h3 className="text-2xl font-bold text-[#7B3F00] mb-3">Luxury Suite Experience</h3>
+              <p className="text-[#7B3F00]/80 mb-4">
+                Experience comfort and elegance in our beautifully appointed rooms featuring modern amenities, 
+                premium bedding, and stunning views. Each room is designed to provide you with the perfect blend 
+                of luxury and functionality.
+              </p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-[#FFD700] rounded-full"></div>
+                  <span className="text-[#7B3F00]">Free WiFi</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-[#FFD700] rounded-full"></div>
+                  <span className="text-[#7B3F00]">Air Conditioning</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-[#FFD700] rounded-full"></div>
+                  <span className="text-[#7B3F00]">Room Service</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-[#FFD700] rounded-full"></div>
+                  <span className="text-[#7B3F00]">Premium TV</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Form Section */}
+        <div className="order-1 lg:order-2">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 bg-white p-6 rounded-lg shadow-lg"
+            noValidate
+          >
         {formError && (
           <div className="bg-red-100 text-red-700 px-4 py-2 rounded mb-2 border border-red-300 animate-pulse">{formError}</div>
         )}
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="block mb-1 font-medium">Guest Name</label>
+            <label className="block mb-1 font-medium text-[#7B3F00]">Guest Name</label>
             <input
               name="guest_name"
               value={form.guest_name}
               onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('name') ? 'border-red-400' : ''}`}
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('name') ? 'border-red-400' : 'border-gray-300'}`}
               aria-invalid={!!formError && formError.toLowerCase().includes('name')}
+              placeholder="Enter your full name"
             />
           </div>
 
           <div>
-            <label className="block mb-1 font-medium">Email</label>
+            <label className="block mb-1 font-medium text-[#7B3F00]">Email</label>
             <input
               name="guest_email"
               value={form.guest_email}
               onChange={handleChange}
               type="email"
-              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('email') ? 'border-red-400' : ''}`}
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('email') ? 'border-red-400' : 'border-gray-300'}`}
               aria-invalid={!!formError && formError.toLowerCase().includes('email')}
+              placeholder="Enter your email address"
             />
           </div>
 
           <div>
-            <label className="block mb-1 font-medium">Phone</label>
+            <label className="block mb-1 font-medium text-[#7B3F00]">Phone</label>
             <input
               name="guest_phone"
               value={form.guest_phone}
               onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('phone') ? 'border-red-400' : ''}`}
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('phone') ? 'border-red-400' : 'border-gray-300'}`}
               aria-invalid={!!formError && formError.toLowerCase().includes('phone')}
+              placeholder="Enter your phone number"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1 font-medium">Check-in Date</label>
+              <label className="block mb-1 font-medium text-[#7B3F00]">Check-in Date</label>
               <input
                 name="check_in"
                 value={form.check_in}
                 onChange={handleChange}
                 type="date"
-                className={`w-full border rounded px-3 py-2 ${formError && formError.toLowerCase().includes('date') ? 'border-red-400' : ''}`}
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('date') ? 'border-red-400' : 'border-gray-300'}`}
                 aria-invalid={!!formError && formError.toLowerCase().includes('date')}
               />
             </div>
@@ -344,6 +381,8 @@ const BookingPage = () => {
           </div>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   );
 };

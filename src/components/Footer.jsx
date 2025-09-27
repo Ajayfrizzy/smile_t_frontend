@@ -53,8 +53,9 @@ const Footer = () => {
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-[#FFD700]" />
                 <span className="text-white text-sm">
-                  <a href="mailto:Smiletcontinentalhotel1@gmail.com" className="hover:underline">Smiletcontinentalhotel1@gmail.com</a><br />
-                  <a href="mailto:Smiletcontinentalhotel@gmail.com" className="hover:underline">Smiletcontinentalhotel@gmail.com</a>
+                  {/* <a href="mailto:Smiletcontinentalhotel1@gmail.com" className="hover:underline">Smiletcontinentalhotel1@gmail.com</a><br />
+                  <a href="mailto:Smiletcontinentalhotel@gmail.com" className="hover:underline">Smiletcontinentalhotel@gmail.com</a> */}
+                  <a href="mailto:info@smile-tcontinental.com" className="hover:underline">info@smile-tcontinental.com</a>
                 </span>
               </div>
             </div>
