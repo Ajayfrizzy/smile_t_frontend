@@ -14,8 +14,6 @@ const StaffManagement = () => {
     name: '',
     staff_id: '',
     role: 'receptionist',
-    email: '',
-    phone: '',
     password: '',
     is_active: true
   });
@@ -29,11 +27,15 @@ const StaffManagement = () => {
     try {
       setLoading(true);
       const response = await apiRequest('/staff');
-      if (response && response.success) {
-        setStaff(response.data || []);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (data && data.success) {
+        setStaff(data.data || []);
         setError('');
       } else {
-        setError(response?.message || 'Failed to fetch staff');
+        setError(data?.message || 'Failed to fetch staff');
       }
     } catch (err) {
       console.error('Error fetching staff:', err);
@@ -78,12 +80,17 @@ const StaffManagement = () => {
         });
       }
 
-      if (response && response.success) {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data && data.success) {
         await fetchStaff();
         closeModal();
         alert(`Staff ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
       } else {
-        setError(response?.message || `Failed to ${modalMode} staff`);
+        setError(data?.message || `Failed to ${modalMode} staff`);
       }
     } catch (err) {
       setError(`Error ${modalMode === 'add' ? 'adding' : 'updating'} staff: ` + err.message);
@@ -101,11 +108,16 @@ const StaffManagement = () => {
         method: 'DELETE'
       });
 
-      if (response && response.success) {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data && data.success) {
         await fetchStaff();
         alert('Staff deleted successfully!');
       } else {
-        setError(response?.message || 'Failed to delete staff');
+        setError(data?.message || 'Failed to delete staff');
       }
     } catch (err) {
       setError('Error deleting staff: ' + err.message);
@@ -122,8 +134,6 @@ const StaffManagement = () => {
         name: staffMember.name || '',
         staff_id: staffMember.staff_id || '',
         role: staffMember.role || 'receptionist',
-        email: staffMember.email || '',
-        phone: staffMember.phone || '',
         password: '', // Don't populate password for edit
         is_active: staffMember.is_active !== false
       });
@@ -132,8 +142,6 @@ const StaffManagement = () => {
         name: '',
         staff_id: '',
         role: 'receptionist',
-        email: '',
-        phone: '',
         password: '',
         is_active: true
       });
@@ -344,33 +352,7 @@ const StaffManagement = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
-                  placeholder="Enter email address"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
-                  placeholder="Enter phone number"
-                />
-              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

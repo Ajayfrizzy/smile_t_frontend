@@ -44,7 +44,7 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <MapPin className="w-5 h-5 text-[#FFD700]" />
-                <span className="text-white text-sm">7, Ganiyu Olawale Street, iyana-ejigbo Lagos</span>
+                <span className="text-white text-sm">7, Ganiyu Olawale Street, iyana-ejigbo, Lagos.</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-[#FFD700]" />

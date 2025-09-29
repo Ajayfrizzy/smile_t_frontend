@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import Button from "../components/Button";
 import BookingReceipt from "./BookingReceipt";
 import { apiRequest } from "../utils/api";
+import { loadFlutterwave, openFlutterwaveCheckout } from "../utils/flutterwave";
 
 const generateReference = () =>
   `BK-${Date.now().toString(36).toUpperCase().slice(-8)}`;
@@ -46,8 +47,14 @@ const BookingPage = () => {
       try {
         // Use the room inventory endpoint
         const response = await apiRequest("/room-inventory/available");
-        if (response && response.success) {
-          setRooms(response.data || []);
+        
+        if (response && response.ok) {
+          const data = await response.json();
+          if (data && data.success && data.data) {
+            setRooms(data.data);
+          } else {
+            setRooms([]);
+          }
         } else {
           setRooms([]);
         }
@@ -105,11 +112,11 @@ const BookingPage = () => {
   const checkAvailability = async () => {
     try {
       const resp = await apiRequest(
-  `/bookings?room_id=${form.room_id}&check_in=${form.check_in}&check_out=${form.check_out}`
+        `/room-inventory/check-availability?room_type_id=${form.room_id}&check_in=${form.check_in}&check_out=${form.check_out}`
       );
       if (!resp.ok) throw new Error("Could not verify availability");
-      const bookings = await resp.json();
-      return bookings.length === 0;
+      const result = await resp.json();
+      return result.success && result.available;
     } catch (err) {
       console.error("Availability check failed", err);
       toast.error("Could not verify availability, please try again");
@@ -155,7 +162,7 @@ const BookingPage = () => {
       };
 
       // Let backend calculate totals/fee
-      const resp = await apiRequest("/bookings", {
+      const resp = await apiRequest("/bookings/public", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -168,6 +175,7 @@ const BookingPage = () => {
         await loadFlutterwave();
         const publicKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY;
         if (!publicKey) throw new Error("Missing Flutterwave public key");
+        
         openFlutterwaveCheckout({
           public_key: publicKey,
           tx_ref: reference,
@@ -211,6 +219,7 @@ const BookingPage = () => {
           },
         });
       } catch (err) {
+        console.error("Payment error:", err);
         toast.error(err.message || "Could not start payment");
       }
     } catch (err) {

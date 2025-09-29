@@ -171,8 +171,8 @@
     }
     </script>
     
-    <!-- Security Headers (Development - allows localhost) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' https:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*;" />
+    <!-- Security Headers (Development - allows localhost and Flutterwave) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.flutterwave.com https://*.flutterwave.com https://*.f4b-flutterwave.com; style-src 'self' 'unsafe-inline' https://*.flutterwave.com https://*.f4b-flutterwave.com; img-src 'self' data: https: http:; font-src 'self' https:; connect-src 'self' https: http://localhost:* http://127.0.0.1:* https://*.flutterwave.com https://*.f4b-flutterwave.com; frame-src 'self' https://*.flutterwave.com https://*.f4b-flutterwave.com;" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />

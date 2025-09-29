@@ -27,11 +27,16 @@ const RoomInventoryManagement = () => {
     try {
       setLoading(true);
       const response = await apiRequest('/room-inventory');
-      if (response && response.success) {
-        setRoomInventory(response.data || []);
-        setError('');
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          setRoomInventory(data.data || []);
+          setError('');
+        } else {
+          setError(data?.message || 'Failed to fetch room inventory');
+        }
       } else {
-        setError(response?.message || 'Failed to fetch room inventory');
+        setError('Failed to fetch room inventory');
       }
     } catch (err) {
       console.error('Error fetching room inventory:', err);
@@ -80,34 +85,39 @@ const RoomInventoryManagement = () => {
         });
       }
 
-      if (response && response.success) {
-        // Optimistic update - update UI immediately without API call
-        if (modalMode === 'add') {
-          const newInventory = {
-            id: Date.now(), // Temporary ID
-            ...inventoryData,
-            room_type_details: getRoomTypeById(inventoryData.room_type_id),
-            is_active: true
-          };
-          setRoomInventory(prev => [...prev, newInventory]);
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          // Optimistic update - update UI immediately without API call
+          if (modalMode === 'add') {
+            const newInventory = {
+              id: Date.now(), // Temporary ID
+              ...inventoryData,
+              room_type_details: getRoomTypeById(inventoryData.room_type_id),
+              is_active: true
+            };
+            setRoomInventory(prev => [...prev, newInventory]);
+          } else {
+            setRoomInventory(prev => prev.map(inventory => 
+              inventory.id === currentInventory.id 
+                ? { ...inventory, ...inventoryData }
+                : inventory
+            ));
+          }
+          closeModal();
+          
+          // Show success message without blocking UI
+          setTimeout(() => {
+            alert(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
+          }, 100);
+          
+          // Refresh data in background to sync with server
+          fetchRoomInventory();
         } else {
-          setRoomInventory(prev => prev.map(inventory => 
-            inventory.id === currentInventory.id 
-              ? { ...inventory, ...inventoryData }
-              : inventory
-          ));
+          setError(data?.message || `Failed to ${modalMode} room inventory`);
         }
-        closeModal();
-        
-        // Show success message without blocking UI
-        setTimeout(() => {
-          alert(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
-        }, 100);
-        
-        // Refresh data in background to sync with server
-        fetchRoomInventory();
       } else {
-        setError(response?.message || `Failed to ${modalMode} room inventory`);
+        setError(`Failed to ${modalMode} room inventory`);
       }
     } catch (err) {
       setError(`Error ${modalMode === 'add' ? 'adding' : 'updating'} room inventory: ` + err.message);
@@ -125,16 +135,21 @@ const RoomInventoryManagement = () => {
         method: 'DELETE'
       });
 
-      if (response && response.success) {
-        // Optimistic delete - remove from UI immediately
-        setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
-        
-        // Show success message without blocking UI
-        setTimeout(() => {
-          alert('Room inventory deleted successfully!');
-        }, 100);
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          // Optimistic delete - remove from UI immediately
+          setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
+          
+          // Show success message without blocking UI
+          setTimeout(() => {
+            alert('Room inventory deleted successfully!');
+          }, 100);
+        } else {
+          setError(data?.message || 'Failed to delete room inventory');
+        }
       } else {
-        setError(response?.message || 'Failed to delete room inventory');
+        setError('Failed to delete room inventory');
       }
     } catch (err) {
       setError('Error deleting room inventory: ' + err.message);

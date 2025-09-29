@@ -34,10 +34,15 @@ const TransactionsAnalytics = () => {
       const roomsResponse = await apiRequest('/room-inventory');
       const drinksResponse = await apiRequest('/transactions'); // Assuming this returns drink sales
 
-      if (bookingsResponse.success && roomsResponse.success) {
-        const bookings = bookingsResponse.data || [];
-        const rooms = roomsResponse.data || [];
-        const drinkSales = drinksResponse.success ? drinksResponse.data || [] : [];
+      // Parse responses properly
+      const bookingsData = bookingsResponse && bookingsResponse.ok ? await bookingsResponse.json() : { success: false, data: [] };
+      const roomsData = roomsResponse && roomsResponse.ok ? await roomsResponse.json() : { success: false, data: [] };
+      const drinksData = drinksResponse && drinksResponse.ok ? await drinksResponse.json() : { success: false, data: [] };
+
+      // Use data even if some requests fail
+      const bookings = bookingsData.success ? bookingsData.data || [] : [];
+      const rooms = roomsData.success ? roomsData.data || [] : [];
+      const drinkSales = drinksData.success ? drinksData.data || [] : [];
 
         // Filter by date range
         const filteredBookings = bookings.filter(booking => {
@@ -72,9 +77,6 @@ const TransactionsAnalytics = () => {
           averageBookingValue,
           averageDrinkSale
         });
-      } else {
-        setError('Failed to fetch analytics data');
-      }
     } catch (err) {
       setError('Error fetching analytics: ' + err.message);
     } finally {
@@ -85,18 +87,24 @@ const TransactionsAnalytics = () => {
   const fetchTransactions = async () => {
     try {
       const response = await apiRequest('/transactions');
-      if (response.success) {
+      const data = response && response.ok ? await response.json() : { success: false, data: [] };
+      
+      if (data.success) {
         // Filter transactions by date range
-        const filtered = (response.data || []).filter(transaction => {
+        const filtered = (data.data || []).filter(transaction => {
           const transactionDate = new Date(transaction.created_at || transaction.transaction_date);
           const start = new Date(dateRange.startDate);
           const end = new Date(dateRange.endDate);
           return transactionDate >= start && transactionDate <= end;
         });
         setTransactions(filtered);
+      } else {
+        // Set empty transactions but don't show error
+        setTransactions([]);
       }
     } catch (err) {
       console.error('Error fetching transactions:', err);
+      setTransactions([]);
     }
   };
 
@@ -134,8 +142,11 @@ const TransactionsAnalytics = () => {
   const exportBookings = async () => {
     try {
       const response = await apiRequest('/bookings');
-      if (response.success) {
-        exportToCSV(response.data, 'bookings_report');
+      const data = response && response.ok ? await response.json() : { success: false, data: [] };
+      if (data.success) {
+        exportToCSV(data.data, 'bookings_report');
+      } else {
+        alert('No bookings data available to export');
       }
     } catch (err) {
       alert('Failed to export bookings: ' + err.message);
@@ -213,7 +224,7 @@ const TransactionsAnalytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Total Revenue"
-          value={`$${analytics.totalRevenue.toFixed(2)}`}
+          value={`₦${analytics.totalRevenue.toFixed(2)}`}
           icon={DollarSign}
           color="bg-green-500"
           subtext="All sources combined"
@@ -224,7 +235,7 @@ const TransactionsAnalytics = () => {
           value={analytics.totalBookings}
           icon={Users}
           color="bg-blue-500"
-          subtext={`Avg: $${analytics.averageBookingValue.toFixed(2)}`}
+          subtext={`Avg: ₦${analytics.averageBookingValue.toFixed(2)}`}
         />
         
         <StatCard
@@ -237,10 +248,10 @@ const TransactionsAnalytics = () => {
         
         <StatCard
           title="Bar Revenue"
-          value={`$${analytics.totalDrinkSales.toFixed(2)}`}
+          value={`₦${analytics.totalDrinkSales.toFixed(2)}`}
           icon={BarChart3}
           color="bg-orange-500"
-          subtext={`Avg: $${analytics.averageDrinkSale.toFixed(2)}`}
+          subtext={`Avg: ₦${analytics.averageDrinkSale.toFixed(2)}`}
         />
         
         <StatCard
@@ -326,7 +337,7 @@ const TransactionsAnalytics = () => {
                       {transaction.description || 'No description'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${transaction.amount || 0}
+                      ₦{transaction.amount || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

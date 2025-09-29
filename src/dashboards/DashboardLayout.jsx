@@ -21,6 +21,20 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
   const [profileDropdown, setProfileDropdown] = useState(false);
   const navigate = useNavigate();
 
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdown && !event.target.closest('.profile-dropdown-container')) {
+        setProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [profileDropdown]);
+
   // Get navigation items based on user role
   const getNavigationItems = (role) => {
     const baseItems = [
@@ -79,7 +93,7 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       {/* Sidebar */}
       <div className={`bg-white shadow-sm transition-all duration-300 ${
         sidebarOpen ? 'w-64' : 'w-20'
-      } flex flex-col`}>
+      } flex flex-col fixed left-0 top-0 h-full z-30`}>
         {/* Logo/Brand */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center">
@@ -132,9 +146,9 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 fixed top-0 right-0 left-0 z-20" style={{ marginLeft: sidebarOpen ? '256px' : '80px' }}>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 capitalize">
@@ -153,9 +167,13 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
               </button>
 
               {/* Profile Dropdown */}
-              <div className="relative">
+              <div className="relative profile-dropdown-container">
                 <button
-                  onClick={() => setProfileDropdown(!profileDropdown)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setProfileDropdown(!profileDropdown);
+                  }}
                   className="flex items-center space-x-3 p-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                 >
                   <div className="w-8 h-8 bg-[#7B3F00] rounded-full flex items-center justify-center">
@@ -169,25 +187,37 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
                 </button>
 
                 {profileDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <div 
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-[60]"
+                    style={{ zIndex: 60 }}
+                  >
                     <button
-                      onClick={() => setActiveTab('profile')}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setActiveTab('profile');
+                        setProfileDropdown(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
                     >
                       <User className="w-4 h-4 mr-3" />
                       Profile Settings
                     </button>
                     <button
-                      onClick={() => setActiveTab('settings')}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setActiveTab('settings');
+                        setProfileDropdown(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
                     >
                       <Settings className="w-4 h-4 mr-3" />
                       Settings
                     </button>
                     <hr className="my-1 border-gray-200" />
                     <button
-                      onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+                      onClick={() => {
+                        setProfileDropdown(false);
+                        handleLogout();
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
                     >
                       <LogOut className="w-4 h-4 mr-3" />
                       Sign Out
@@ -200,18 +230,14 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
+        <main className="flex-1 p-6 overflow-auto mt-16 h-screen">
+          <div className="h-full overflow-y-auto">
+            {children}
+          </div>
         </main>
       </div>
 
-      {/* Click outside to close dropdown */}
-      {profileDropdown && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setProfileDropdown(false)}
-        />
-      )}
+
     </div>
   );
 };

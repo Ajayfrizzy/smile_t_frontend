@@ -55,9 +55,16 @@ export default function RoomsPage() {
       try {
         // Use the optimized available rooms endpoint
         const response = await apiRequest('/room-inventory/available');
-        if (response && response.success && response.data && response.data.length > 0) {
-          // Data is already optimized from backend - no processing needed!
-          setRooms(response.data);
+        if (response && response.ok) {
+          const data = await response.json();
+          if (data && data.success && data.data && data.data.length > 0) {
+            // Data is already optimized from backend - no processing needed!
+            setRooms(data.data);
+          } else {
+            // Only use fallback data if API fails completely
+            console.warn('Using fallback room data');
+            setRooms(fallbackRooms);
+          }
         } else {
           // Only use fallback data if API fails completely
           console.warn('Using fallback room data');

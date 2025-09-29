@@ -4,7 +4,7 @@ const BookingReceipt = ({ booking }) => {
   if (!booking) return <div>No booking found.</div>;
   return (
     <div className="max-w-xl mx-auto bg-white p-6 rounded shadow mt-8">
-  <h2 className="text-2xl font-bold mb-4 text-hotelBrown">Booking Receipt</h2>
+  <h2 className="text-2xl font-bold mb-4 text-#7B3F00">Booking Receipt</h2>
       <div className="mb-4">
         <strong>Reference:</strong> {booking.reference}
       </div>
@@ -39,7 +39,7 @@ const BookingReceipt = ({ booking }) => {
         <strong>Payment Status:</strong> {booking.payment_status}
       </div>
       <div className="mt-4">
-  <button onClick={() => window.print()} className="bg-hotelBrown text-white px-4 py-2 rounded hover:bg-hotelGold hover:text-hotelBrown transition-colors duration-300">Print / Save Receipt</button>
+  <button onClick={() => window.print()} className="bg-[#7B3F00] text-white px-4 py-2 rounded hover:bg-[#FFD700] hover:text-[#7B3F00] transition-colors duration-300">Print / Save Receipt</button>
       </div>
       <div className="mt-2 text-xs text-gray-500">Show this receipt at the reception for check-in confirmation.</div>
     </div>

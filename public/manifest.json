@@ -1,0 +1,21 @@
+{
+  "name": "Smile-T Continental Hotel",
+  "short_name": "Smile-T Hotel",
+  "description": "Luxury accommodation and premium hospitality services",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7B3F00",
+  "icons": [
+    {
+      "src": "/assets/images/logo.svg",
+      "sizes": "192x192",
+      "type": "image/svg"
+    },
+    {
+      "src": "/assets/images/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg"
+    }
+  ]
+}
