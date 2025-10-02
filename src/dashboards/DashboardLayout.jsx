@@ -44,8 +44,7 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
     const roleSpecificItems = [
       // Super Admin - Full Access
       { id: 'staff', name: 'Staff Management', icon: Users, roles: ['superadmin'] },
-      { id: 'rooms', name: 'Room Management', icon: Bed, roles: ['superadmin'] },
-      { id: 'room-inventory', name: 'Room Inventory', icon: Package, roles: ['superadmin'] },
+      { id: 'room-inventory', name: 'Room Management', icon: Bed, roles: ['superadmin'] },
       { id: 'drinks', name: 'Drinks Management', icon: Package, roles: ['superadmin', 'barmen'] },
       { id: 'bookings', name: 'Bookings', icon: FileText, roles: ['superadmin', 'supervisor', 'receptionist'] },
       { id: 'bar-sales', name: 'Bar Sales', icon: BarChart3, roles: ['superadmin', 'supervisor', 'barmen'] },

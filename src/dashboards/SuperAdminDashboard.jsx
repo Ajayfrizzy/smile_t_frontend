@@ -4,6 +4,8 @@ import StaffManagement from '../components/StaffManagement';
 import RoomInventoryManagement from '../components/RoomInventoryManagement';
 import DrinksManagement from '../components/DrinksManagement';
 import TransactionsAnalytics from '../components/TransactionsAnalytics';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
 import { 
   Users, 
@@ -19,6 +21,7 @@ import {
 import { apiRequest } from '../utils/api';
 
 const SuperAdminDashboard = () => {
+  const { toasts, toast, removeToast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboardData, setDashboardData] = useState({
     totalStaff: 0,
@@ -34,6 +37,7 @@ const SuperAdminDashboard = () => {
   const [roomInventory, setRoomInventory] = useState([]);
   const [drinksInventory, setDrinksInventory] = useState([]);
   const [bookingsData, setBookingsData] = useState([]);
+  const [barSalesData, setBarSalesData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [bookingForm, setBookingForm] = useState({
     guest_name: '',
@@ -99,7 +103,7 @@ const SuperAdminDashboard = () => {
     e.preventDefault();
     
     if (profileForm.newPassword !== profileForm.confirmPassword) {
-      alert('New passwords do not match');
+      toast.error('New passwords do not match');
       return;
     }
 
@@ -123,7 +127,7 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          alert('Profile updated successfully!');
+          toast.success('Profile updated successfully!');
           // Update localStorage with new user data if name changed
           if (updateData.name) {
             const updatedUser = { ...user, name: updateData.name };
@@ -188,12 +192,13 @@ const SuperAdminDashboard = () => {
       setLoading(true);
       
       // Fetch all dashboard data in parallel
-      const [staffRes, roomsRes, bookingsRes, analyticsRes, drinksRes] = await Promise.allSettled([
+      const [staffRes, roomsRes, bookingsRes, analyticsRes, drinksRes, barSalesRes] = await Promise.allSettled([
         apiRequest('/staff'),
         apiRequest('/room-inventory'),
         apiRequest('/bookings'),
         apiRequest('/analytics/overview'),
-        apiRequest('/drinks')
+        apiRequest('/drinks'),
+        apiRequest('/bar-sales')
       ]);
 
       // Process staff data
@@ -224,10 +229,20 @@ const SuperAdminDashboard = () => {
         setDrinksInventory(drinksData.data || []);
       }
 
+      // Process bar sales data
+      const barSalesDataRes = barSalesRes.status === 'fulfilled' && barSalesRes.value && barSalesRes.value.ok
+        ? await barSalesRes.value.json() : { success: false, data: [] };
+      
+      // Set bar sales data for display
+      if (barSalesDataRes.success) {
+        setBarSalesData(barSalesDataRes.data || []);
+      }
+
       // Calculate totals
       const roomsArray = roomsData.success ? roomsData.data || [] : [];
       const bookingsArray = bookingsData.success ? bookingsData.data || [] : [];
       const staffArray = staffData.success ? staffData.data || [] : [];
+      const barSalesArray = barSalesDataRes.success ? barSalesDataRes.data || [] : [];
       
       // Store bookings data for display
       setBookingsData(bookingsArray);
@@ -236,6 +251,14 @@ const SuperAdminDashboard = () => {
       const totalRooms = roomsArray.reduce((sum, room) => sum + (room.total_rooms || 0), 0);
       const availableRooms = roomsArray.reduce((sum, room) => sum + (room.available_rooms || 0), 0);
       const totalRevenue = analyticsObject.totalRevenue || 0;
+      
+      // Calculate bar sales metrics
+      const totalBarSales = barSalesArray.length;
+      const barSalesRevenue = barSalesArray.reduce((sum, sale) => {
+        // Calculate revenue from quantity and unit_price if available
+        const saleAmount = (sale.quantity || 0) * (sale.unit_price || sale.drinks?.price || 0);
+        return sum + saleAmount;
+      }, 0);
 
       setDashboardData({
         totalStaff: staffArray.length,
@@ -243,6 +266,8 @@ const SuperAdminDashboard = () => {
         availableRooms,
         totalBookings: bookingsArray.length,
         totalRevenue,
+        totalBarSales,
+        barSalesRevenue,
         recentActivities: analyticsObject.recentActivities || []
       });
 
@@ -283,7 +308,7 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          alert('Booking created successfully!');
+          toast.success('Booking created successfully!');
           setShowBookingModal(false);
           resetBookingForm();
           fetchDashboardData(); // Refresh data
@@ -301,17 +326,93 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const handleDeleteBooking = async (bookingId) => {
+    if (!confirm('Are you sure you want to cancel this booking?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const response = await apiRequest(`/bookings/${bookingId}`, {
+        method: 'DELETE'
+      });
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          toast.success('Booking cancelled successfully!');
+          fetchDashboardData(); // Refresh data
+        } else {
+          toast.error(data?.message || 'Failed to cancel booking');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData?.message || 'Failed to cancel booking');
+      }
+    } catch (error) {
+      alert('Error cancelling booking: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBarSale = async (saleId) => {
+    if (!confirm('Are you sure you want to delete this sale?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const response = await apiRequest(`/bar-sales/${saleId}`, {
+        method: 'DELETE'
+      });
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          alert('Sale deleted successfully!');
+          fetchDashboardData(); // Refresh data
+        } else {
+          alert(data?.message || 'Failed to delete sale');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData?.message || 'Failed to delete sale');
+      }
+    } catch (error) {
+      alert('Error deleting sale: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSalesSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       
+      // Validate form data
+      if (!salesForm.drink_id || !salesForm.quantity) {
+        alert('Please select a drink and enter quantity');
+        setLoading(false);
+        return;
+      }
+
+      const drinkId = parseInt(salesForm.drink_id);
+      const quantity = parseInt(salesForm.quantity);
+
+      if (isNaN(drinkId) || isNaN(quantity) || quantity <= 0) {
+        alert('Please enter valid drink selection and quantity');
+        setLoading(false);
+        return;
+      }
+      
       // Prepare sales data to match backend expectations
       const salesData = {
-        drink_id: parseInt(salesForm.drink_id),
-        quantity: parseInt(salesForm.quantity),
-        customer_name: 'Walk-in Customer', // Optional field
-        payment_method: 'cash' // Default payment method
+        drink_id: drinkId,
+        quantity: quantity
       };
       
       console.log('Sales data being sent:', salesData);
@@ -325,19 +426,19 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          alert('Sale recorded successfully!');
+          toast.success('Sale recorded successfully!');
           setShowSalesModal(false);
           resetSalesForm();
           fetchDashboardData(); // Refresh data
         } else {
-          alert(data?.message || 'Failed to record sale');
+          toast.error(data?.message || 'Failed to record sale');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to record sale - please check server connection');
+        toast.error(errorData?.message || 'Failed to record sale - please check server connection');
       }
     } catch (error) {
-      alert('Error recording sale: ' + error.message);
+      toast.error('Error recording sale: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -361,7 +462,7 @@ const SuperAdminDashboard = () => {
   const OverviewContent = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard
           title="Total Staff"
           value={dashboardData.totalStaff}
@@ -384,6 +485,13 @@ const SuperAdminDashboard = () => {
           subtitle="All time"
         />
         <StatCard
+          title="Bar Sales"
+          value={dashboardData.totalBarSales || 0}
+          icon={BarChart3}
+          color="bg-orange-500"
+          subtitle={`₦${(dashboardData.barSalesRevenue || 0).toLocaleString()} revenue`}
+        />
+        <StatCard
           title="Total Revenue"
           value={`₦${dashboardData.totalRevenue.toLocaleString()}`}
           icon={DollarSign}
@@ -393,7 +501,7 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Charts and Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Room Occupancy Chart */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Room Occupancy</h3>
@@ -416,6 +524,38 @@ const SuperAdminDashboard = () => {
             <div className="text-sm text-gray-600">
               Occupancy Rate: {dashboardData.totalRooms > 0 ? 
                 (((dashboardData.totalRooms - dashboardData.availableRooms) / dashboardData.totalRooms) * 100).toFixed(1) : 0}%
+            </div>
+          </div>
+        </div>
+
+        {/* Bar Sales Summary */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Bar Sales Summary</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total Sales</span>
+              <span className="text-sm font-medium">{dashboardData.totalBarSales || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total Revenue</span>
+              <span className="text-sm font-medium text-green-600">₦{(dashboardData.barSalesRevenue || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Available Drinks</span>
+              <span className="text-sm font-medium">{drinksInventory.filter(drink => (drink.stock_quantity || 0) > 0).length}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-orange-500 h-2 rounded-full transition-all duration-300" 
+                style={{ 
+                  width: `${drinksInventory.length > 0 ? 
+                    (drinksInventory.filter(drink => (drink.stock_quantity || 0) > 0).length / drinksInventory.length) * 100 : 0}%` 
+                }}
+              ></div>
+            </div>
+            <div className="text-sm text-gray-600">
+              Stock Availability: {drinksInventory.length > 0 ? 
+                ((drinksInventory.filter(drink => (drink.stock_quantity || 0) > 0).length / drinksInventory.length) * 100).toFixed(1) : 0}%
             </div>
           </div>
         </div>
@@ -489,8 +629,6 @@ const SuperAdminDashboard = () => {
         return <OverviewContent />;
       case 'staff':
         return <StaffManagement />;
-      case 'rooms':
-        return <RoomInventoryManagement />;
       case 'room-inventory':
         return <RoomInventoryManagement />;
       case 'drinks':
@@ -521,6 +659,7 @@ const SuperAdminDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -552,13 +691,22 @@ const SuperAdminDashboard = () => {
                                 }`}>
                                   {booking.status}
                                 </span>
-                                <div className="text-xs text-gray-500 mt-1">{booking.payment_status}</div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 ₦{booking.total_amount?.toLocaleString() || '0'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {booking.transaction_ref}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button
+                                  onClick={() => handleDeleteBooking(booking.id)}
+                                  disabled={loading}
+                                  className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 px-3 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Cancel Booking"
+                                >
+                                  Cancel
+                                </button>
                               </td>
                             </tr>
                           );
@@ -592,11 +740,66 @@ const SuperAdminDashboard = () => {
                 </button>
               </div>
               <div className="border-t pt-4">
-                <div className="text-center py-8 text-gray-500">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="mb-2">No sales recorded today</p>
-                  <p className="text-sm">Start by recording your first sale</p>
-                </div>
+                {barSalesData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drink</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {barSalesData.map((sale, index) => (
+                          <tr key={sale.id || index}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {sale.drinks?.drink_name || 'Unknown Drink'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {sale.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              ₦{sale.unit_price?.toLocaleString() || '0'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              ₦{sale.total_amount?.toLocaleString() || '0'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{sale.staff?.name || 'Unknown Staff'}</div>
+                              <div className="text-sm text-gray-500">{sale.staff?.staff_id || ''}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(sale.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => handleDeleteBarSale(sale.id)}
+                                disabled={loading}
+                                className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 px-3 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Delete Sale"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="mb-2">No sales recorded</p>
+                    <p className="text-sm">Start by recording your first sale</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -982,11 +1185,17 @@ const SuperAdminDashboard = () => {
                   >
                     <option value="">Select a drink</option>
                     {drinksInventory.length > 0 ? (
-                      drinksInventory.map((drink) => (
-                        <option key={drink.id} value={drink.id}>
-                          {drink.name || drink.drink_name || 'Unknown Drink'} - ₦{(drink.price || drink.price_per_unit || 0).toLocaleString()}
-                        </option>
-                      ))
+                      drinksInventory.map((drink) => {
+                        const stockQuantity = drink.stock_quantity || 0;
+                        const stockStatus = stockQuantity > 0 ? `(${stockQuantity} available)` : '(Out of stock)';
+                        const isOutOfStock = stockQuantity <= 0;
+                        
+                        return (
+                          <option key={drink.id} value={drink.id} disabled={isOutOfStock}>
+                            {drink.name || drink.drink_name || 'Unknown Drink'} - ₦{(drink.price || drink.price_per_unit || 0).toLocaleString()} {stockStatus}
+                          </option>
+                        );
+                      })
                     ) : (
                       <option value="" disabled>No drinks available</option>
                     )}
@@ -1067,6 +1276,9 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </>
   );
 };
