@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 function FadeTransition({ children }) {
   const { pathname } = useLocation();
   const [show, setShow] = React.useState(true);
@@ -45,6 +46,18 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            borderRadius: '8px',
+            fontSize: '14px'
+          }
+        }}
+      />
       {!hideNavAndFooter && <Navbar />}
       <main className="flex-1">
           <FadeTransition>

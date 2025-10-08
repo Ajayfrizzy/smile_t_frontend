@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
+import toast from 'react-hot-toast';
 
 const RoomInventoryManagement = () => {
   const [roomInventory, setRoomInventory] = useState([]);
@@ -26,7 +27,7 @@ const RoomInventoryManagement = () => {
   const fetchRoomInventory = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest('/room-inventory');
+      const response = await apiRequest('/room-inventory/dashboard');
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
@@ -106,10 +107,8 @@ const RoomInventoryManagement = () => {
           }
           closeModal();
           
-          // Show success message without blocking UI
-          setTimeout(() => {
-            alert(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
-          }, 100);
+          // Show success message
+          toast.success(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
           
           // Refresh data in background to sync with server
           fetchRoomInventory();
@@ -141,10 +140,8 @@ const RoomInventoryManagement = () => {
           // Optimistic delete - remove from UI immediately
           setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
           
-          // Show success message without blocking UI
-          setTimeout(() => {
-            alert('Room inventory deleted successfully!');
-          }, 100);
+          // Show success message
+          toast.success('Room inventory deleted successfully!');
         } else {
           setError(data?.message || 'Failed to delete room inventory');
         }
@@ -164,16 +161,16 @@ const RoomInventoryManagement = () => {
     if (mode === 'edit' && inventory) {
       setFormData({
         room_type_id: inventory.room_type_id || '',
-        available_rooms: inventory.available_rooms || 0,
         total_rooms: inventory.total_rooms || 0,
+        available_rooms: inventory.available_rooms || 0,
         status: inventory.status || 'Available'
       });
       setSelectedRoomType(getRoomTypeById(inventory.room_type_id));
     } else {
       setFormData({
         room_type_id: '',
-        available_rooms: 0,
         total_rooms: 0,
+        available_rooms: 0,
         status: 'Available'
       });
       setSelectedRoomType(null);
@@ -189,8 +186,8 @@ const RoomInventoryManagement = () => {
     // Reset form to prevent controlled input warnings
     setFormData({
       room_type_id: '',
-      available_rooms: 0,
       total_rooms: 0,
+      available_rooms: 0,
       status: 'Available'
     });
   };
@@ -247,10 +244,10 @@ const RoomInventoryManagement = () => {
                     Price/Night
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Available
+                    Total Rooms
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Rooms
+                    Available
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Occupancy
@@ -288,11 +285,11 @@ const RoomInventoryManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         ₦{roomType?.price_per_night?.toLocaleString() || 0}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {inventory.available_rooms || 0}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {inventory.total_rooms || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {inventory.available_rooms || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">

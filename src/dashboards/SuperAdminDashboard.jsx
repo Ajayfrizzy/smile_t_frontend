@@ -39,6 +39,8 @@ const SuperAdminDashboard = () => {
   const [bookingsData, setBookingsData] = useState([]);
   const [barSalesData, setBarSalesData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [bookingFilter, setBookingFilter] = useState('all');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [bookingForm, setBookingForm] = useState({
     guest_name: '',
     guest_email: '',
@@ -102,6 +104,22 @@ const SuperAdminDashboard = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     
+    // Enhanced password validation
+    if (!profileForm.currentPassword) {
+      toast.error('Current password is required');
+      return;
+    }
+    
+    if (!profileForm.newPassword) {
+      toast.error('New password is required');
+      return;
+    }
+    
+    if (profileForm.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+    
     if (profileForm.newPassword !== profileForm.confirmPassword) {
       toast.error('New passwords do not match');
       return;
@@ -141,14 +159,14 @@ const SuperAdminDashboard = () => {
             confirmPassword: ''
           });
         } else {
-          alert(data?.message || 'Failed to update profile');
+          toast.error(data?.message || 'Failed to update profile');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to update profile');
+        toast.error(errorData?.message || 'Failed to update profile');
       }
     } catch (error) {
-      alert('Error updating profile: ' + error.message);
+      toast.error('Error updating profile: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -168,16 +186,16 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          alert('Settings updated successfully!');
+          toast.success('Settings updated successfully!');
         } else {
-          alert(data?.message || 'Failed to update settings');
+          toast.error(data?.message || 'Failed to update settings');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to update settings');
+        toast.error(errorData?.message || 'Failed to update settings');
       }
     } catch (error) {
-      alert('Error updating settings: ' + error.message);
+      toast.error('Error updating settings: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -187,6 +205,13 @@ const SuperAdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Refresh data when switching to key tabs
+  useEffect(() => {
+    if (activeTab === 'room-inventory' || activeTab === 'overview' || activeTab === 'analytics') {
+      fetchDashboardData();
+    }
+  }, [activeTab]);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -194,7 +219,7 @@ const SuperAdminDashboard = () => {
       // Fetch all dashboard data in parallel
       const [staffRes, roomsRes, bookingsRes, analyticsRes, drinksRes, barSalesRes] = await Promise.allSettled([
         apiRequest('/staff'),
-        apiRequest('/room-inventory'),
+        apiRequest('/room-inventory/dashboard'),
         apiRequest('/bookings'),
         apiRequest('/analytics/overview'),
         apiRequest('/drinks'),
@@ -250,25 +275,99 @@ const SuperAdminDashboard = () => {
       
       const totalRooms = roomsArray.reduce((sum, room) => sum + (room.total_rooms || 0), 0);
       const availableRooms = roomsArray.reduce((sum, room) => sum + (room.available_rooms || 0), 0);
-      const totalRevenue = analyticsObject.totalRevenue || 0;
       
-      // Calculate bar sales metrics
+      // Calculate bar sales metrics - fix field name issue
       const totalBarSales = barSalesArray.length;
       const barSalesRevenue = barSalesArray.reduce((sum, sale) => {
-        // Calculate revenue from quantity and unit_price if available
-        const saleAmount = (sale.quantity || 0) * (sale.unit_price || sale.drinks?.price || 0);
-        return sum + saleAmount;
+        return sum + (sale.total_amount || sale.amount || 0);
       }, 0);
+      
+      // Calculate bookings revenue from ALL bookings (all-time data)
+      const bookingsRevenue = bookingsArray.reduce((sum, booking) => {
+        return sum + (booking.total_amount || 0);
+      }, 0);
+      
+      // Calculate total revenue from both sources (all-time data)
+      const totalRevenue = bookingsRevenue + barSalesRevenue;
+      
+
+      
+      // Create recent activities from actual data instead of relying on analytics endpoint
+      const recentActivities = [];
+      
+      // Sort bookings by date first, then get recent ones
+      const sortedBookings = bookingsArray
+        .filter(booking => booking.guest_name && (booking.check_in || booking.created_at))
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || a.check_in);
+          const dateB = new Date(b.created_at || b.check_in);
+          return dateB - dateA; // Newest first
+        })
+        .slice(0, 5);
+      
+      sortedBookings.forEach(booking => {
+        const bookingDate = booking.check_in || booking.created_at;
+        const sourceIcon = booking.booking_source === 'online' ? '🌐' : '🏢';
+        const sourceText = booking.booking_source === 'online' ? 'Online' : 'Manual';
+        recentActivities.push({
+          description: `${sourceIcon} ${sourceText} booking: ${booking.guest_name} - ${booking.room_type || 'Room'}`,
+          time: new Date(bookingDate).toLocaleString(),
+          amount: booking.total_amount || 0,
+          type: 'booking',
+          booking_source: booking.booking_source,
+          rawDate: new Date(bookingDate)
+        });
+      });
+      
+      // Sort bar sales by date first, then get recent ones
+      const sortedBarSales = barSalesArray
+        .filter(sale => sale.drink_name || sale.drinks?.drink_name)
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || a.date);
+          const dateB = new Date(b.created_at || b.date);
+          return dateB - dateA; // Newest first
+        })
+        .slice(0, 5);
+      
+      sortedBarSales.forEach(sale => {
+        const saleDate = sale.created_at || sale.date;
+        recentActivities.push({
+          description: `Bar sale: ${sale.drinks?.drink_name || sale.drink_name || 'Drink'} (Qty: ${sale.quantity || 1})`,
+          time: new Date(saleDate).toLocaleString(),
+          amount: sale.total_amount || sale.amount || 0,
+          type: 'bar_sale',
+          rawDate: new Date(saleDate)
+        });
+      });
+      
+      // Sort all activities by date (newest first) and limit to 8
+      recentActivities.sort((a, b) => b.rawDate - a.rawDate);
+      
+
+      
+      // Calculate occupancy rate using same method as working room management
+      // Use room inventory data (total_rooms - available_rooms) instead of booking filtering
+      const totalOccupiedRooms = roomsArray.reduce((sum, room) => {
+        return sum + ((room.total_rooms || 0) - (room.available_rooms || 0));
+      }, 0);
+      
+      const occupancyRate = totalRooms > 0 ? (totalOccupiedRooms / totalRooms) * 100 : 0;
+      const currentOccupiedRooms = totalOccupiedRooms;
+      
+
 
       setDashboardData({
         totalStaff: staffArray.length,
         totalRooms,
         availableRooms,
-        totalBookings: bookingsArray.length,
-        totalRevenue,
-        totalBarSales,
-        barSalesRevenue,
-        recentActivities: analyticsObject.recentActivities || []
+        totalBookings: bookingsArray.length, // All-time total bookings
+        totalRevenue, // All-time total revenue
+        totalBarSales, // All-time bar sales count
+        barSalesRevenue, // All-time bar sales revenue
+        bookingsRevenue, // All-time bookings revenue
+        currentOccupiedRooms,
+        occupancyRate,
+        recentActivities: recentActivities.slice(0, 8)
       });
 
     } catch (error) {
@@ -285,7 +384,7 @@ const SuperAdminDashboard = () => {
       
       // Prepare booking data with proper formatting to match backend
       const bookingData = {
-        room_id: bookingForm.room_type_id, // Backend expects room_id
+        room_id: bookingForm.room_type_id,
         guest_name: bookingForm.guest_name,
         guest_email: bookingForm.guest_email,
         guest_phone: bookingForm.guest_phone,
@@ -312,15 +411,16 @@ const SuperAdminDashboard = () => {
           setShowBookingModal(false);
           resetBookingForm();
           fetchDashboardData(); // Refresh data
+          setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
         } else {
-          alert(data?.message || 'Failed to create booking');
+          toast.error(data?.message || 'Failed to create booking');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to create booking - please check all required fields');
+        toast.error(errorData?.message || 'Failed to create booking - please check all required fields');
       }
     } catch (error) {
-      alert('Error creating booking: ' + error.message);
+      toast.error('Error creating booking: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -343,15 +443,16 @@ const SuperAdminDashboard = () => {
         if (data && data.success) {
           toast.success('Booking cancelled successfully!');
           fetchDashboardData(); // Refresh data
+          setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
         } else {
           toast.error(data?.message || 'Failed to cancel booking');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to cancel booking');
+        toast.error(errorData?.message || 'Failed to cancel booking');
       }
     } catch (error) {
-      alert('Error cancelling booking: ' + error.message);
+      toast.error('Error cancelling booking: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -372,17 +473,17 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          alert('Sale deleted successfully!');
+          toast.success('Sale deleted successfully!');
           fetchDashboardData(); // Refresh data
         } else {
-          alert(data?.message || 'Failed to delete sale');
+          toast.error(data?.message || 'Failed to delete sale');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData?.message || 'Failed to delete sale');
+        toast.error(errorData?.message || 'Failed to delete sale');
       }
     } catch (error) {
-      alert('Error deleting sale: ' + error.message);
+      toast.error('Error deleting sale: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -395,7 +496,7 @@ const SuperAdminDashboard = () => {
       
       // Validate form data
       if (!salesForm.drink_id || !salesForm.quantity) {
-        alert('Please select a drink and enter quantity');
+        toast.error('Please select a drink and enter quantity');
         setLoading(false);
         return;
       }
@@ -403,8 +504,8 @@ const SuperAdminDashboard = () => {
       const drinkId = parseInt(salesForm.drink_id);
       const quantity = parseInt(salesForm.quantity);
 
-      if (isNaN(drinkId) || isNaN(quantity) || quantity <= 0) {
-        alert('Please enter valid drink selection and quantity');
+      if (isNaN(drinkId) || isNaN(quantity) || quantity < 0) {
+        toast.error('Please enter valid drink selection and quantity');
         setLoading(false);
         return;
       }
@@ -482,7 +583,7 @@ const SuperAdminDashboard = () => {
           value={dashboardData.totalBookings}
           icon={Calendar}
           color="bg-purple-500"
-          subtitle="All time"
+          subtitle={`₦${(dashboardData.bookingsRevenue || 0).toLocaleString()} revenue`}
         />
         <StatCard
           title="Bar Sales"
@@ -509,21 +610,22 @@ const SuperAdminDashboard = () => {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Occupied Rooms</span>
               <span className="text-sm font-medium">
-                {dashboardData.totalRooms - dashboardData.availableRooms} / {dashboardData.totalRooms}
+                {dashboardData.currentOccupiedRooms || 0} / {dashboardData.totalRooms}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
                 style={{ 
-                  width: `${dashboardData.totalRooms > 0 ? 
-                    ((dashboardData.totalRooms - dashboardData.availableRooms) / dashboardData.totalRooms) * 100 : 0}%` 
+                  width: `${dashboardData.occupancyRate || 0}%` 
                 }}
               ></div>
             </div>
             <div className="text-sm text-gray-600">
-              Occupancy Rate: {dashboardData.totalRooms > 0 ? 
-                (((dashboardData.totalRooms - dashboardData.availableRooms) / dashboardData.totalRooms) * 100).toFixed(1) : 0}%
+              Occupancy Rate: {(dashboardData.occupancyRate || 0).toFixed(1)}%
+            </div>
+            <div className="text-xs text-gray-500">
+              Available: {dashboardData.availableRooms} rooms
             </div>
           </div>
         </div>
@@ -563,19 +665,29 @@ const SuperAdminDashboard = () => {
         {/* Recent Activities */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activities</h3>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-64 overflow-y-auto">
             {dashboardData.recentActivities.length > 0 ? (
               dashboardData.recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center space-x-3 text-sm">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-600">{activity.description}</span>
-                  <span className="text-gray-400">{activity.time}</span>
+                <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div>
+                      <div className="text-sm text-gray-900 font-medium">{activity.description}</div>
+                      <div className="text-xs text-gray-500">{activity.time}</div>
+                    </div>
+                  </div>
+                  {activity.amount > 0 && (
+                    <div className="text-sm font-medium text-green-600">
+                      ₦{activity.amount.toLocaleString()}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No recent activities</p>
+                <p className="text-xs mt-2">Activities will appear as bookings and sales are made</p>
               </div>
             )}
           </div>
@@ -647,6 +759,43 @@ const SuperAdminDashboard = () => {
                   New Booking
                 </button>
               </div>
+              
+              {/* Booking Source Filter */}
+              <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                <span className="text-sm text-gray-600 font-medium">Filter by source:</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBookingFilter('all')}
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      bookingFilter === 'all' 
+                        ? 'bg-gray-800 text-white' 
+                        : 'bg-white text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    All ({bookingsData.length})
+                  </button>
+                  <button
+                    onClick={() => setBookingFilter('online')}
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      bookingFilter === 'online' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                    }`}
+                  >
+                    🌐 Online ({bookingsData.filter(b => b.created_by_role === 'client' || b.payment_method === 'flutterwave').length})
+                  </button>
+                  <button
+                    onClick={() => setBookingFilter('manual')}
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      bookingFilter === 'manual' 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-green-100 text-green-600 hover:bg-green-200'
+                    }`}
+                  >
+                    🏢 Manual ({bookingsData.filter(b => b.created_by_role === 'superadmin' || b.created_by_role === 'receptionist' || b.payment_method === 'manual').length})
+                  </button>
+                </div>
+              </div>
               <div className="border-t pt-4">
                 {bookingsData.length > 0 ? (
                   <div className="overflow-x-auto">
@@ -656,6 +805,7 @@ const SuperAdminDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
@@ -663,8 +813,19 @@ const SuperAdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {bookingsData.map((booking, index) => {
-                          const roomType = getRoomTypeById(booking.room_id) || {};
+                        {bookingsData
+                          .filter(booking => {
+                            if (bookingFilter === 'all') return true;
+                            if (bookingFilter === 'manual') {
+                              return booking.created_by_role === 'superadmin' || booking.created_by_role === 'receptionist' || booking.payment_method === 'manual';
+                            }
+                            if (bookingFilter === 'online') {
+                              return booking.created_by_role === 'client' || booking.payment_method === 'flutterwave';
+                            }
+                            return true;
+                          })
+                          .map((booking, index) => {
+                          // Room type is now provided directly by backend
                           return (
                             <tr key={booking.id || index}>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -675,13 +836,38 @@ const SuperAdminDashboard = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900">{roomType.room_type || 'Unknown Room'}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm text-gray-900">{booking.room_type || 'Unknown Room'}</div>
+                                  {booking.booking_source === 'online' && (
+                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                      🌐 Online
+                                    </span>
+                                  )}
+                                  {booking.booking_source === 'manual' && (
+                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                      🏢 In-Person
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-sm text-gray-500">{booking.guests} guest{booking.guests !== 1 ? 's' : ''}</div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-gray-900">
                                   {new Date(booking.check_in).toLocaleDateString()} - {new Date(booking.check_out).toLocaleDateString()}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  booking.created_by_role === 'client' ? 'bg-blue-100 text-blue-800' :
+                                  booking.created_by_role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
+                                  booking.created_by_role === 'receptionist' ? 'bg-green-100 text-green-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {booking.created_by_role === 'client' ? '🌐 Client' :
+                                   booking.created_by_role === 'superadmin' ? '👑 SuperAdmin' :
+                                   booking.created_by_role === 'receptionist' ? '🏨 Receptionist' :
+                                   booking.payment_method === 'flutterwave' ? '🌐 Online' : '👤 Manual'}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -721,6 +907,20 @@ const SuperAdminDashboard = () => {
                     <p className="text-sm">Start by creating your first booking</p>
                   </div>
                 )}
+                
+                {/* Total Bookings Amount */}
+                {bookingsData && bookingsData.length > 0 && (
+                  <div className="mt-4 bg-gray-50 px-6 py-4 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">
+                        Total Bookings ({bookingsData.length} bookings)
+                      </span>
+                      <span className="text-lg font-bold text-[#7B3F00]">
+                        ₦{bookingsData.reduce((sum, booking) => sum + (booking.total_amount || 0), 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -749,7 +949,6 @@ const SuperAdminDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -770,10 +969,6 @@ const SuperAdminDashboard = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               ₦{sale.total_amount?.toLocaleString() || '0'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{sale.staff?.name || 'Unknown Staff'}</div>
-                              <div className="text-sm text-gray-500">{sale.staff?.staff_id || ''}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(sale.created_at).toLocaleDateString()}
@@ -805,7 +1000,7 @@ const SuperAdminDashboard = () => {
           </div>
         );
       case 'analytics':
-        return <TransactionsAnalytics />;
+        return <TransactionsAnalytics refreshTrigger={refreshTrigger} />;
       case 'reports':
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -1218,11 +1413,11 @@ const SuperAdminDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     required
                     value={salesForm.quantity}
                     onChange={(e) => {
-                      const quantity = parseInt(e.target.value) || 1;
+                      const quantity = parseInt(e.target.value) || 0;
                       const total = quantity * salesForm.price_per_unit;
                       setSalesForm(prev => ({...prev, quantity, total_amount: total}));
                     }}

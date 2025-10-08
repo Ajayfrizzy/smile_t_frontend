@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { apiRequest } from '../utils/api';
+import toast from 'react-hot-toast';
 
 const StaffManagement = () => {
   const [staff, setStaff] = useState([]);
@@ -88,7 +89,7 @@ const StaffManagement = () => {
       if (data && data.success) {
         await fetchStaff();
         closeModal();
-        alert(`Staff ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
+        toast.success(`Staff ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
       } else {
         setError(data?.message || `Failed to ${modalMode} staff`);
       }
@@ -115,7 +116,7 @@ const StaffManagement = () => {
       const data = await response.json();
       if (data && data.success) {
         await fetchStaff();
-        alert('Staff deleted successfully!');
+        toast.success('Staff deleted successfully!');
       } else {
         setError(data?.message || 'Failed to delete staff');
       }

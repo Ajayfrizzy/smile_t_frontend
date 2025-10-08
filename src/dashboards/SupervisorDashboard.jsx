@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
-import TransactionsAnalytics from '../components/TransactionsAnalytics';
 import { 
-  Users, 
-  Bed, 
   Calendar, 
-  TrendingUp, 
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle
+  DollarSign,
+  Globe,
+  User,
+  BarChart3,
+  RefreshCw
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
+import { getRoomTypeById } from '../utils/roomTypes';
 
 const SupervisorDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardData, setDashboardData] = useState({
-    staffOnDuty: 0,
-    roomsOccupied: 0,
-    todayBookings: 0,
-    pendingTasks: 0,
-    roomStatus: [],
-    staffStatus: [],
-    todayRevenue: 0
-  });
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [bookingsData, setBookingsData] = useState([]);
+  const [barSalesData, setBarSalesData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Get user info from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -37,42 +29,19 @@ const SupervisorDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch supervisor-relevant data
-      const [staffRes, roomsRes, bookingsRes] = await Promise.allSettled([
-        apiRequest('/staff'),
-        apiRequest('/room-inventory'),
-        apiRequest('/bookings')
+      // Fetch supervisor viewing data - only bookings and bar sales
+      const [bookingsRes, barSalesRes] = await Promise.allSettled([
+        apiRequest('/bookings'),
+        apiRequest('/drinks/sales')
       ]);
 
-      // Process data
-      const staffData = staffRes.status === 'fulfilled' && staffRes.value.success 
-        ? staffRes.value.data : [];
-      const roomsData = roomsRes.status === 'fulfilled' && roomsRes.value.success 
-        ? roomsRes.value.data : [];
-      const bookingsData = bookingsRes.status === 'fulfilled' && bookingsRes.value.success 
+      const bookingsArray = bookingsRes.status === 'fulfilled' && bookingsRes.value.success 
         ? bookingsRes.value.data : [];
+      const barSalesArray = barSalesRes.status === 'fulfilled' && barSalesRes.value.success 
+        ? barSalesRes.value.data : [];
 
-      // Calculate metrics
-      const staffOnDuty = staffData.filter(staff => staff.is_active).length;
-      const totalRooms = roomsData.reduce((sum, room) => sum + (room.total_rooms || 0), 0);
-      const availableRooms = roomsData.reduce((sum, room) => sum + (room.available_rooms || 0), 0);
-      const roomsOccupied = totalRooms - availableRooms;
-
-      // Today's bookings
-      const today = new Date().toISOString().split('T')[0];
-      const todayBookings = bookingsData.filter(booking => 
-        booking.check_in_date?.startsWith(today)
-      ).length;
-
-      setDashboardData({
-        staffOnDuty,
-        roomsOccupied,
-        todayBookings,
-        pendingTasks: 3, // Mock data
-        roomStatus: roomsData,
-        staffStatus: staffData,
-        todayRevenue: 150000 // Mock data
-      });
+      setBookingsData(bookingsArray);
+      setBarSalesData(barSalesArray);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -81,176 +50,33 @@ const SupervisorDashboard = () => {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-        </div>
-        <div className={`p-3 rounded-full ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
+  const getBookingSourceIcon = (paymentMethod) => {
+    return paymentMethod === 'manual' ? (
+      <User className="w-4 h-4 text-blue-600" title="Walk-in Booking" />
+    ) : (
+      <Globe className="w-4 h-4 text-green-600" title="Online Booking" />
+    );
+  };
 
-  const OverviewContent = () => (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Staff on Duty"
-          value={dashboardData.staffOnDuty}
-          icon={Users}
-          color="bg-green-500"
-          subtitle="Currently active"
-        />
-        <StatCard
-          title="Rooms Occupied"
-          value={dashboardData.roomsOccupied}
-          icon={Bed}
-          color="bg-blue-500"
-          subtitle="Out of total rooms"
-        />
-        <StatCard
-          title="Today's Bookings"
-          value={dashboardData.todayBookings}
-          icon={Calendar}
-          color="bg-purple-500"
-          subtitle="Check-ins today"
-        />
-        <StatCard
-          title="Pending Tasks"
-          value={dashboardData.pendingTasks}
-          icon={Clock}
-          color="bg-orange-500"
-          subtitle="Require attention"
-        />
-      </div>
+  const filterBookings = () => {
+    if (!searchTerm) return bookingsData;
+    return bookingsData.filter(booking => 
+      booking.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.guest_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.transaction_ref?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
 
-      {/* Room Status Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Room Status Overview</h3>
-          <div className="space-y-4">
-            {dashboardData.roomStatus.map((room, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-900">{room.room_type_details?.room_type || 'Unknown Type'}</h4>
-                  <p className="text-sm text-gray-600">
-                    {room.available_rooms} available / {room.total_rooms} total
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {room.status === 'Available' ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : room.status === 'Maintenance' ? (
-                    <AlertCircle className="w-5 h-5 text-yellow-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  )}
-                  <span className={`text-sm font-medium ${
-                    room.status === 'Available' ? 'text-green-600' :
-                    room.status === 'Maintenance' ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                    {room.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Staff Status */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Staff Status</h3>
-          <div className="space-y-3">
-            {dashboardData.staffStatus.slice(0, 5).map((staff, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <Users className="w-4 h-4 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{staff.name}</p>
-                    <p className="text-xs text-gray-500 capitalize">{staff.role}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    staff.is_active ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className={`text-xs font-medium ${
-                    staff.is_active ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {staff.is_active ? 'On Duty' : 'Off Duty'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Today's Performance</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">₦{dashboardData.todayRevenue.toLocaleString()}</div>
-            <div className="text-sm text-gray-500">Revenue Today</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {dashboardData.roomStatus.length > 0 ? 
-                (dashboardData.roomsOccupied / dashboardData.roomStatus.reduce((sum, room) => sum + room.total_rooms, 0) * 100).toFixed(1) : 0}%
-            </div>
-            <div className="text-sm text-gray-500">Occupancy Rate</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{dashboardData.staffOnDuty}</div>
-            <div className="text-sm text-gray-500">Staff on Duty</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => setActiveTab('bookings')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors"
-          >
-            <Calendar className="w-8 h-8 text-blue-500 mb-2" />
-            <h4 className="font-medium text-gray-900">View Bookings</h4>
-            <p className="text-sm text-gray-500">Check today's reservations</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('room-status')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors"
-          >
-            <Bed className="w-8 h-8 text-green-500 mb-2" />
-            <h4 className="font-medium text-gray-900">Room Status</h4>
-            <p className="text-sm text-gray-500">Monitor room availability</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors"
-          >
-            <TrendingUp className="w-8 h-8 text-purple-500 mb-2" />
-            <h4 className="font-medium text-gray-900">Analytics</h4>
-            <p className="text-sm text-gray-500">View performance reports</p>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const filterBarSales = () => {
+    if (!searchTerm) return barSalesData;
+    return barSalesData.filter(sale => 
+      sale.drinks?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.staff_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
 
   const renderContent = () => {
-    if (loading && activeTab === 'overview') {
+    if (loading) {
       return (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B3F00]"></div>
@@ -259,28 +85,188 @@ const SupervisorDashboard = () => {
     }
 
     switch (activeTab) {
-      case 'overview':
-        return <OverviewContent />;
-      case 'analytics':
-        return <TransactionsAnalytics />;
       case 'bookings':
-        return (
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Bookings Management</h3>
-            <p className="text-gray-600">Bookings management functionality coming soon...</p>
-          </div>
-        );
-      case 'room-status':
-        return (
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Room Status</h3>
-            <p className="text-gray-600">Detailed room status functionality coming soon...</p>
-          </div>
-        );
+        return <BookingsView />;
+      case 'bar-sales':
+        return <BarSalesView />;
       default:
-        return <OverviewContent />;
+        return <BookingsView />;
     }
   };
+
+  const BookingsView = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">All Bookings</h3>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search bookings..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+            />
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="p-2 text-gray-500 hover:text-gray-700"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filterBookings().map((booking, index) => {
+                const roomType = getRoomTypeById(booking.room_id) || {};
+                return (
+                  <tr key={booking.id || index}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{booking.guest_name}</div>
+                        <div className="text-sm text-gray-500">{booking.guest_email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {roomType.room_type || 'Unknown'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {booking.check_in}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {booking.check_out}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        {getBookingSourceIcon(booking.payment_method)}
+                        <span className="text-sm text-gray-600">
+                          {booking.payment_method === 'manual' ? 'Walk-in' : 'Online'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ₦{(booking.total_amount || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {booking.transaction_ref}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const BarSalesView = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">Bar Sales</h3>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search sales..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+            />
+            <BarChart3 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="p-2 text-gray-500 hover:text-gray-700"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drink</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filterBarSales().map((sale, index) => (
+                <tr key={sale.id || index}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {sale.drinks?.name || 'Unknown Drink'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {sale.drinks?.category || 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {sale.quantity || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₦{(sale.unit_price || sale.drinks?.price || 0).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    ₦{(sale.total_amount || (sale.quantity * (sale.unit_price || sale.drinks?.price || 0))).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {sale.staff_name || 'Unknown'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(sale.created_at || Date.now()).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      sale.payment_method === 'cash' ? 'bg-green-100 text-green-800' :
+                      sale.payment_method === 'card' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {sale.payment_method || 'Cash'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DashboardLayout

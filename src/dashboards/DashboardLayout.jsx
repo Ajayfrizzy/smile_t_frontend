@@ -13,7 +13,9 @@ import {
   LogOut,
   Bell,
   User,
-  ChevronDown
+  ChevronDown,
+  Plus,
+  Eye
 } from 'lucide-react';
 
 const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab }) => {
@@ -38,16 +40,16 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
   // Get navigation items based on user role
   const getNavigationItems = (role) => {
     const baseItems = [
-      { id: 'overview', name: 'Overview', icon: Home, roles: ['superadmin', 'supervisor', 'receptionist', 'barmen'] },
+      { id: 'overview', name: 'Overview', icon: Home, roles: ['superadmin', 'supervisor', 'receptionist'] },
     ];
 
     const roleSpecificItems = [
       // Super Admin - Full Access
       { id: 'staff', name: 'Staff Management', icon: Users, roles: ['superadmin'] },
       { id: 'room-inventory', name: 'Room Management', icon: Bed, roles: ['superadmin'] },
-      { id: 'drinks', name: 'Drinks Management', icon: Package, roles: ['superadmin', 'barmen'] },
+      { id: 'drinks', name: 'Drinks Management', icon: Package, roles: ['superadmin'] },
       { id: 'bookings', name: 'Bookings', icon: FileText, roles: ['superadmin', 'supervisor', 'receptionist'] },
-      { id: 'bar-sales', name: 'Bar Sales', icon: BarChart3, roles: ['superadmin', 'supervisor', 'barmen'] },
+      { id: 'bar-sales', name: 'Bar Sales', icon: BarChart3, roles: ['superadmin', 'supervisor'] },
       { id: 'analytics', name: 'Analytics', icon: BarChart3, roles: ['superadmin', 'supervisor'] },
       { id: 'reports', name: 'Reports', icon: FileText, roles: ['superadmin', 'supervisor'] },
       
@@ -57,11 +59,10 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       
       // Receptionist - Front Desk
       { id: 'check-in', name: 'Check In/Out', icon: Bed, roles: ['receptionist'] },
-      { id: 'guest-services', name: 'Guest Services', icon: User, roles: ['receptionist'] },
       
       // Barmen - Bar Operations
-      { id: 'inventory', name: 'Drink Inventory', icon: Package, roles: ['barmen'] },
-      { id: 'sales', name: 'Sales', icon: BarChart3, roles: ['barmen'] },
+      { id: 'create-sale', name: 'Create Sale', icon: Plus, roles: ['barmen'] },
+      { id: 'view-inventory', name: 'View Inventory', icon: Eye, roles: ['barmen'] },
     ];
 
     return [...baseItems, ...roleSpecificItems].filter(item => 
@@ -190,16 +191,6 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
                     className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-[60]"
                     style={{ zIndex: 60 }}
                   >
-                    <button
-                      onClick={() => {
-                        setActiveTab('profile');
-                        setProfileDropdown(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
-                    >
-                      <User className="w-4 h-4 mr-3" />
-                      Profile Settings
-                    </button>
                     <button
                       onClick={() => {
                         setActiveTab('settings');

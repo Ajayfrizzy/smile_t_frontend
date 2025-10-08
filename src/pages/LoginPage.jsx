@@ -18,6 +18,23 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Client-side validation
+    if (!form.staff_id.trim()) {
+      toast.error('📋 Please enter your Staff ID');
+      return;
+    }
+    
+    if (!form.password.trim()) {
+      toast.error('🔑 Please enter your password');
+      return;
+    }
+    
+    if (form.password.length < 3) {
+      toast.error('🔑 Password is too short');
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -32,7 +49,7 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        toast.success('Login successful!');
+        toast.success('✅ Login successful!');
         
         // Redirect based on role
         switch (data.user.role) {
@@ -52,11 +69,43 @@ export default function LoginPage() {
             navigate('/dashboard/superadmin');
         }
       } else {
-        toast.error('Invalid credentials');
+        // Handle different error responses
+        let errorData = {};
+        
+        try {
+          // Try to parse the error response
+          errorData = await response.json();
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          errorData = {};
+        }
+        
+        const errorType = errorData?.type;
+        const errorMessage = errorData?.error || errorData?.message || 'Invalid credentials';
+        
+        if (response.status === 401) {
+          // Handle specific authentication errors based on type
+          if (errorType === 'INVALID_STAFF_ID') {
+            toast.error('🆔 Staff ID not found');
+          } else if (errorType === 'INVALID_PASSWORD') {
+            toast.error('🔒 Incorrect password');  
+          } else {
+            // Fallback for any other 401 errors
+            toast.error('❌ Invalid Staff ID or password');
+          }
+        } else if (response.status === 403) {
+          toast.error('🚫 Access denied. Your account may be inactive.');
+        } else {
+          toast.error(errorMessage || 'Invalid credentials');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Login failed. Please try again.');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('🌐 Connection error. Please check your internet connection.');
+      } else {
+        toast.error('⚠️ Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

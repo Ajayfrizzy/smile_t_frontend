@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import { apiRequest } from '../utils/api';
+import toast from 'react-hot-toast';
 
 const DrinksManagement = () => {
   const [drinks, setDrinks] = useState([]);
@@ -105,7 +106,7 @@ const DrinksManagement = () => {
           if (data && data.success) {
             await fetchDrinks();
             closeModal();
-            alert(`Drink ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
+            toast.success(`Drink ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
           } else {
             setError(data?.message || `Failed to ${modalMode} drink`);
           }
@@ -142,7 +143,7 @@ const DrinksManagement = () => {
           const data = await response.json();
           if (data && data.success) {
             await fetchDrinks();
-            alert('Drink deleted successfully!');
+            toast.success('Drink deleted successfully!');
           } else {
             setError(data?.message || 'Failed to delete drink');
           }
