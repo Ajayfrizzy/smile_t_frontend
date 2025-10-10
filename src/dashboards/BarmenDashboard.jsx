@@ -12,10 +12,20 @@ import { apiRequest } from '../utils/api';
 import toast from 'react-hot-toast';
 
 const BarmenDashboard = () => {
+  // Get user info from localStorage first
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
   const [activeTab, setActiveTab] = useState('create-sale');
   const [drinks, setDrinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    name: user?.name || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   // Sales form state
   const [saleForm, setSaleForm] = useState({
@@ -24,9 +34,6 @@ const BarmenDashboard = () => {
     customer_name: '',
     payment_method: 'cash'
   });
-
-  // Get user info from localStorage
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     fetchDrinks();
@@ -46,6 +53,65 @@ const BarmenDashboard = () => {
       toast.error('Error loading drinks');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSettingsSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate form
+    if (settingsForm.newPassword && !settingsForm.currentPassword) {
+      toast.error('Current password is required to change password');
+      return;
+    }
+
+    if (settingsForm.newPassword && settingsForm.newPassword !== settingsForm.confirmPassword) {
+      toast.error('New password and confirmation do not match');
+      return;
+    }
+
+    try {
+      const payload = {
+        name: settingsForm.name
+      };
+
+      if (settingsForm.newPassword) {
+        payload.currentPassword = settingsForm.currentPassword;
+        payload.newPassword = settingsForm.newPassword;
+      }
+
+      const response = await apiRequest('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success('Settings updated successfully!');
+          // Update user name in localStorage if it was changed
+          if (settingsForm.name !== user.name) {
+            const updatedUser = { ...user, name: settingsForm.name };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.location.reload(); // Refresh to update UI
+          }
+          // Clear password fields
+          setSettingsForm(prev => ({
+            ...prev,
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          }));
+        } else {
+          toast.error(data.message || 'Failed to update settings');
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to update settings');
+      }
+    } catch (error) {
+      console.error('Settings update error:', error);
+      toast.error('Error updating settings: ' + error.message);
     }
   };
 
@@ -337,12 +403,146 @@ const BarmenDashboard = () => {
     );
   };
 
+  const Settings = () => (
+    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+      <h3 className="text-lg font-medium text-gray-900 mb-6">Settings</h3>
+      
+      <form onSubmit={handleSettingsSubmit} className="space-y-6">
+        {/* Profile Settings */}
+        <div>
+          <h4 className="font-medium text-gray-900 mb-4">Profile Settings</h4>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Display Name
+              </label>
+              <input
+                type="text"
+                value={settingsForm.name}
+                onChange={(e) => setSettingsForm(prev => ({...prev, name: e.target.value}))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Password Settings */}
+        <div>
+          <h4 className="font-medium text-gray-900 mb-4">Change Password</h4>
+          <div className="space-y-4">
+            {/* Current Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={settingsForm.currentPassword}
+                  onChange={(e) => setSettingsForm(prev => ({...prev, currentPassword: e.target.value}))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={settingsForm.newPassword}
+                  onChange={(e) => setSettingsForm(prev => ({...prev, newPassword: e.target.value}))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={settingsForm.confirmPassword}
+                  onChange={(e) => setSettingsForm(prev => ({...prev, confirmPassword: e.target.value}))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            className="flex-1 bg-[#7B3F00] text-white px-6 py-3 rounded-lg hover:bg-[#8B4513] transition-colors font-medium"
+          >
+            Save Changes
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsForm({
+              name: user.name || '',
+              currentPassword: '',
+              newPassword: '',
+              confirmPassword: ''
+            })}
+            className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'create-sale':
         return <CreateSaleForm />;
       case 'view-inventory':
         return <DrinksInventory />;
+      case 'settings':
+        return <Settings />;
       default:
         return <CreateSaleForm />;
     }

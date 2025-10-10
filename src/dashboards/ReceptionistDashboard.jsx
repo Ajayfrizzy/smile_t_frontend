@@ -761,9 +761,6 @@ const ReceptionistDashboard = () => {
       try {
         const response = await apiRequest(`/bookings/${bookingId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({ status: 'checked_in' })
         });
 
@@ -789,9 +786,6 @@ const ReceptionistDashboard = () => {
       try {
         const response = await apiRequest(`/bookings/${bookingId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({ status: 'checked_out' })
         });
 

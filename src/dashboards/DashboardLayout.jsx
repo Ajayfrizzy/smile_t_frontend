@@ -50,12 +50,6 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       { id: 'drinks', name: 'Drinks Management', icon: Package, roles: ['superadmin'] },
       { id: 'bookings', name: 'Bookings', icon: FileText, roles: ['superadmin', 'supervisor', 'receptionist'] },
       { id: 'bar-sales', name: 'Bar Sales', icon: BarChart3, roles: ['superadmin', 'supervisor'] },
-      { id: 'analytics', name: 'Analytics', icon: BarChart3, roles: ['superadmin', 'supervisor'] },
-      { id: 'reports', name: 'Reports', icon: FileText, roles: ['superadmin', 'supervisor'] },
-      
-      // Supervisor - Management Access
-      { id: 'staff-view', name: 'Staff Overview', icon: Users, roles: ['supervisor'] },
-      { id: 'room-status', name: 'Room Status', icon: Bed, roles: ['supervisor'] },
       
       // Receptionist - Front Desk
       { id: 'check-in', name: 'Check In/Out', icon: Bed, roles: ['receptionist'] },
