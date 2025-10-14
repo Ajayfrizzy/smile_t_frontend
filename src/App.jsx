@@ -19,6 +19,7 @@ import GalleryPage from './pages/GalleryPage';
 import ContactPage from './pages/ContactPage';
 import AboutPage from './pages/AboutPage';
 import BookingPage from './pages/BookingPage';
+import BookingSuccessPage from './pages/BookingSuccessPage';
 import SocialPage from './pages/SocialPage';
 import LoginPage from './pages/LoginPage';
 import SuperAdminDashboard from './dashboards/SuperAdminDashboard';
@@ -68,6 +69,7 @@ function AppContent() {
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/booking" element={<BookingPage />} />
+              <Route path="/booking-success" element={<BookingSuccessPage />} />
               <Route path="/social" element={<SocialPage/>}/>
               <Route path="/staff" element={<LoginPage />} />
               <Route path="/login" element={<LoginPage />} />

@@ -176,9 +176,6 @@ const BookingPage = () => {
         const publicKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY;
         if (!publicKey) throw new Error("Missing Flutterwave public key");
         
-        // Store booking for later use in callbacks
-        const createdBooking = booking;
-        
         openFlutterwaveCheckout({
           public_key: publicKey,
           tx_ref: reference,
@@ -189,45 +186,11 @@ const BookingPage = () => {
             phone_number: form.guest_phone,
             name: form.guest_name,
           },
-          callback: async (res) => {
-            // Close the modal
-            window.FlutterwaveCheckout.close();
-            
-            // Verify payment
-            toast.loading("Verifying payment...");
-            try {
-              const verifyResp = await apiRequest("/flutterwave-verify", {
-                method: "POST",
-                body: JSON.stringify({
-                  tx_ref: reference,
-                  transaction_id: res.transaction_id || res.id,
-                }),
-              });
-              const verifyJson = await verifyResp.json();
-              if (verifyResp.ok && verifyJson.status === "success") {
-                toast.success("Payment verified — booking confirmed");
-                setReceipt({
-                  ...createdBooking,
-                  payment_status: "paid",
-                  status: "confirmed",
-                });
-                setForm((f) => ({
-                  ...f,
-                  room_id: "",
-                  check_in: "",
-                  check_out: "",
-                  guests: 1,
-                }));
-              } else {
-                toast.error("Payment could not be verified. Contact support with reference: " + reference);
-              }
-            } catch (verifyErr) {
-              console.error("Verification error:", verifyErr);
-              toast.error("Payment verification failed. Reference: " + reference);
-            }
-          },
+          // Flutterwave will redirect to this URL after payment
+          // The BookingSuccessPage will handle verification
           onclose: () => {
-            toast("Payment window closed");
+            // User closed modal without completing payment
+            console.log("Payment modal closed");
           },
         });
       } catch (err) {
