@@ -67,11 +67,17 @@ export const openFlutterwaveCheckout = (config) => {
     throw new Error('Customer email and name are required');
   }
 
+  // Get the app URL from environment variable or fallback to current origin
+  const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  
+  // Ensure HTTPS for production (Flutterwave requires HTTPS URLs)
+  const secureAppUrl = appUrl.replace(/^http:/, 'https:');
+  
   // Default configuration
   const defaultConfig = {
     currency: 'NGN',
     payment_options: 'card,mobilemoney,ussd',
-    redirect_url: window.location.origin + '/booking-success',
+    redirect_url: `${secureAppUrl}/booking-success`,
     meta: {
       source: 'hotel-booking',
       merchant_name: 'Smile Motel'
@@ -79,7 +85,9 @@ export const openFlutterwaveCheckout = (config) => {
     customizations: {
       title: 'Smile-T Hotel Booking',
       description: 'Hotel Room Booking Payment',
-      logo: window.location.origin + '/assets/images/logo.svg'
+      // Use a publicly accessible HTTPS logo URL or remove it if not available
+      // Localhost URLs won't work in Flutterwave's HTTPS context
+      logo: appUrl.includes('localhost') ? '' : `${secureAppUrl}/assets/images/logo.svg`
     }
   };
 
