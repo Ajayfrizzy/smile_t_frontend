@@ -15,7 +15,10 @@ import {
   UserCheck,
   UserX,
   Phone,
-  Settings
+  Settings,
+  Eye,
+  EyeOff,
+  RefreshCw
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
@@ -55,6 +58,13 @@ const ReceptionistDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Refresh data when switching to rooms tab
+  useEffect(() => {
+    if (activeTab === 'rooms') {
+      fetchDashboardData();
+    }
+  }, [activeTab]);
 
   const fetchDashboardData = async () => {
     try {
@@ -140,6 +150,7 @@ const ReceptionistDashboard = () => {
     try {
       setLoading(true);
       
+      // Prepare booking data with proper formatting to match backend
       const bookingData = {
         room_id: bookingForm.room_type_id,
         guest_name: bookingForm.guest_name,
@@ -148,12 +159,14 @@ const ReceptionistDashboard = () => {
         check_in: bookingForm.check_in,
         check_out: bookingForm.check_out,
         guests: parseInt(bookingForm.guests),
-        total_amount: bookingForm.total_amount,
         payment_status: 'pending',
         status: 'confirmed',
         transaction_ref: `WI-${Date.now()}`, // Walk-in booking
+        reference: `REF-${Date.now()}`,
         payment_method: 'manual'
       };
+      
+      console.log('Booking data being sent:', bookingData);
       
       const response = await apiRequest('/bookings', {
         method: 'POST',
@@ -172,7 +185,7 @@ const ReceptionistDashboard = () => {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData?.message || 'Failed to create booking');
+        toast.error(errorData?.message || 'Failed to create booking - please check all required fields');
       }
     } catch (error) {
       toast.error('Error creating booking: ' + error.message);
@@ -242,6 +255,7 @@ const ReceptionistDashboard = () => {
           icon={Key}
           color="bg-orange-500"
           subtitle="Ready for booking"
+          onClick={() => setActiveTab('rooms')}
         />
       </div>
 
@@ -275,7 +289,10 @@ const ReceptionistDashboard = () => {
             <div className="border-l-4 border-purple-500 pl-4">
               <h4 className="font-medium text-gray-900">Room Status</h4>
               <p className="text-sm text-gray-600">{dashboardData.availableRooms} rooms available for walk-ins</p>
-              <button className="text-sm text-[#7B3F00] hover:underline">
+              <button 
+                onClick={() => setActiveTab('rooms')}
+                className="text-sm text-[#7B3F00] hover:underline"
+              >
                 Check availability →
               </button>
             </div>
@@ -543,7 +560,17 @@ const ReceptionistDashboard = () => {
 
   const AvailableRooms = () => (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900">Available Rooms</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium text-gray-900">Available Rooms</h3>
+        <button
+          onClick={fetchDashboardData}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
       
       {loading ? (
         <div className="flex items-center justify-center py-8">
@@ -642,10 +669,12 @@ const ReceptionistDashboard = () => {
               value={bookingForm.room_type_id}
               onChange={(e) => {
                 const roomTypeId = e.target.value;
-                const nights = bookingForm.check_in && bookingForm.check_out 
-                  ? Math.ceil((new Date(bookingForm.check_out) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24))
-                  : 1;
                 const roomType = getRoomTypeById(roomTypeId);
+                let nights = 1;
+                if (bookingForm.check_in && bookingForm.check_out) {
+                  const nightsCalc = Math.ceil((new Date(bookingForm.check_out) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24));
+                  nights = nightsCalc > 0 ? nightsCalc : 1;
+                }
                 const total = roomType ? roomType.price_per_night * nights : 0;
                 setBookingForm(prev => ({...prev, room_type_id: roomTypeId, total_amount: total}));
               }}
@@ -678,12 +707,15 @@ const ReceptionistDashboard = () => {
               type="date"
               required
               value={bookingForm.check_in}
+              min={new Date().toISOString().split('T')[0]}
               onChange={(e) => {
                 const checkIn = e.target.value;
-                const nights = checkIn && bookingForm.check_out 
-                  ? Math.ceil((new Date(bookingForm.check_out) - new Date(checkIn)) / (1000 * 60 * 60 * 24))
-                  : 1;
                 const roomType = getRoomTypeById(bookingForm.room_type_id);
+                let nights = 1;
+                if (checkIn && bookingForm.check_out) {
+                  const nightsCalc = Math.ceil((new Date(bookingForm.check_out) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
+                  nights = nightsCalc > 0 ? nightsCalc : 1;
+                }
                 const total = roomType ? roomType.price_per_night * nights : 0;
                 setBookingForm(prev => ({...prev, check_in: checkIn, total_amount: total}));
               }}
@@ -696,12 +728,15 @@ const ReceptionistDashboard = () => {
               type="date"
               required
               value={bookingForm.check_out}
+              min={bookingForm.check_in || new Date().toISOString().split('T')[0]}
               onChange={(e) => {
                 const checkOut = e.target.value;
-                const nights = bookingForm.check_in && checkOut 
-                  ? Math.ceil((new Date(checkOut) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24))
-                  : 1;
                 const roomType = getRoomTypeById(bookingForm.room_type_id);
+                let nights = 1;
+                if (bookingForm.check_in && checkOut) {
+                  const nightsCalc = Math.ceil((new Date(checkOut) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24));
+                  nights = nightsCalc > 0 ? nightsCalc : 1;
+                }
                 const total = roomType ? roomType.price_per_night * nights : 0;
                 setBookingForm(prev => ({...prev, check_out: checkOut, total_amount: total}));
               }}
@@ -902,6 +937,11 @@ const ReceptionistDashboard = () => {
       confirm_password: ''
     });
     const [settingsLoading, setSettingsLoading] = useState(false);
+    const [showPasswords, setShowPasswords] = useState({
+      current: false,
+      new: false,
+      confirm: false
+    });
 
     const handlePasswordChange = async (e) => {
       e.preventDefault();
@@ -962,37 +1002,64 @@ const ReceptionistDashboard = () => {
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-              <input
-                type="password"
-                value={passwordForm.current_password}
-                onChange={(e) => setPasswordForm(prev => ({...prev, current_password: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.current ? "text" : "password"}
+                  value={passwordForm.current_password}
+                  onChange={(e) => setPasswordForm(prev => ({...prev, current_password: e.target.value}))}
+                  className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({...prev, current: !prev.current}))}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPasswords.current ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                </button>
+              </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-              <input
-                type="password"
-                value={passwordForm.new_password}
-                onChange={(e) => setPasswordForm(prev => ({...prev, new_password: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
-                minLength="6"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? "text" : "password"}
+                  value={passwordForm.new_password}
+                  onChange={(e) => setPasswordForm(prev => ({...prev, new_password: e.target.value}))}
+                  className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+                  minLength="6"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({...prev, new: !prev.new}))}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPasswords.new ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-              <input
-                type="password"
-                value={passwordForm.confirm_password}
-                onChange={(e) => setPasswordForm(prev => ({...prev, confirm_password: e.target.value}))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={passwordForm.confirm_password}
+                  onChange={(e) => setPasswordForm(prev => ({...prev, confirm_password: e.target.value}))}
+                  className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({...prev, confirm: !prev.confirm}))}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPasswords.confirm ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+                </button>
+              </div>
             </div>
             
             <button
@@ -1074,7 +1141,15 @@ const ReceptionistDashboard = () => {
                   <select
                     required
                     value={bookingForm.room_type_id}
-                    onChange={(e) => setBookingForm(prev => ({...prev, room_type_id: e.target.value}))}
+                    onChange={(e) => {
+                      const roomTypeId = e.target.value;
+                      const roomType = getRoomTypeById(roomTypeId);
+                      const nights = bookingForm.check_in && bookingForm.check_out 
+                        ? Math.ceil((new Date(bookingForm.check_out) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24))
+                        : 1;
+                      const total = roomType ? roomType.price_per_night * nights : 0;
+                      setBookingForm(prev => ({...prev, room_type_id: roomTypeId, total_amount: total}));
+                    }}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
                   >
                     <option value="">Select a room type</option>
@@ -1096,7 +1171,15 @@ const ReceptionistDashboard = () => {
                       type="date"
                       required
                       value={bookingForm.check_in}
-                      onChange={(e) => setBookingForm(prev => ({...prev, check_in: e.target.value}))}
+                      onChange={(e) => {
+                        const checkIn = e.target.value;
+                        const nights = checkIn && bookingForm.check_out 
+                          ? Math.ceil((new Date(bookingForm.check_out) - new Date(checkIn)) / (1000 * 60 * 60 * 24))
+                          : 1;
+                        const roomType = getRoomTypeById(bookingForm.room_type_id);
+                        const total = roomType ? roomType.price_per_night * nights : 0;
+                        setBookingForm(prev => ({...prev, check_in: checkIn, total_amount: total}));
+                      }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
                     />
                   </div>
@@ -1106,7 +1189,15 @@ const ReceptionistDashboard = () => {
                       type="date"
                       required
                       value={bookingForm.check_out}
-                      onChange={(e) => setBookingForm(prev => ({...prev, check_out: e.target.value}))}
+                      onChange={(e) => {
+                        const checkOut = e.target.value;
+                        const nights = bookingForm.check_in && checkOut 
+                          ? Math.ceil((new Date(checkOut) - new Date(bookingForm.check_in)) / (1000 * 60 * 60 * 24))
+                          : 1;
+                        const roomType = getRoomTypeById(bookingForm.room_type_id);
+                        const total = roomType ? roomType.price_per_night * nights : 0;
+                        setBookingForm(prev => ({...prev, check_out: checkOut, total_amount: total}));
+                      }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
                     />
                   </div>
@@ -1121,6 +1212,17 @@ const ReceptionistDashboard = () => {
                     value={bookingForm.guests}
                     onChange={(e) => setBookingForm(prev => ({...prev, guests: parseInt(e.target.value)}))}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
+                  />
+                </div>
+
+                {/* Total Amount Display */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`₦${bookingForm.total_amount.toLocaleString()}`}
+                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 font-bold text-lg text-[#7B3F00]"
                   />
                 </div>
 

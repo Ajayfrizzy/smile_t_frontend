@@ -3,7 +3,7 @@ import { TrendingUp, DollarSign, Users, BarChart3, Download, Calendar, RefreshCw
 import { apiRequest } from '../utils/api';
 import toast from 'react-hot-toast';
 
-const TransactionsAnalytics = ({ refreshTrigger }) => {
+const TransactionsAnalytics = ({ refreshTrigger, bookingsData, barSalesData }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [analytics, setAnalytics] = useState({
@@ -39,31 +39,45 @@ const TransactionsAnalytics = ({ refreshTrigger }) => {
       setLoading(true);
       setError('');
 
-      // Fetch data from working endpoints only
-      const [bookingsResponse, roomsResponse, barSalesResponse] = await Promise.allSettled([
-        apiRequest('/bookings'),
-        apiRequest('/room-inventory/dashboard'), 
-        apiRequest('/bar-sales')
-      ]);
-
-      // Parse responses safely
+      // Initialize variables
       let bookings = [];
       let rooms = [];
       let barSales = [];
       
-      if (bookingsResponse.status === 'fulfilled' && bookingsResponse.value && bookingsResponse.value.ok) {
-        const bookingsData = await bookingsResponse.value.json();
-        bookings = bookingsData.success ? bookingsData.data || [] : [];
-      }
-      
-      if (roomsResponse.status === 'fulfilled' && roomsResponse.value && roomsResponse.value.ok) {
-        const roomsData = await roomsResponse.value.json();
-        rooms = roomsData.success ? roomsData.data || [] : [];
-      }
-      
-      if (barSalesResponse.status === 'fulfilled' && barSalesResponse.value && barSalesResponse.value.ok) {
-        const barSalesData = await barSalesResponse.value.json();
-        barSales = barSalesData.success ? barSalesData.data || [] : [];
+      // Use passed props data if available, otherwise fetch from API
+      if (bookingsData && barSalesData) {
+        bookings = bookingsData;
+        barSales = barSalesData;
+        
+        // Fetch only rooms data if using props
+        const roomsResponse = await apiRequest('/room-inventory/dashboard');
+        if (roomsResponse && roomsResponse.ok) {
+          const roomsData = await roomsResponse.json();
+          rooms = roomsData.success ? roomsData.data || [] : [];
+        }
+      } else {
+        // Fetch all data if props are not available
+        const [bookingsResponse, roomsResponse, barSalesResponse] = await Promise.allSettled([
+          apiRequest('/bookings'),
+          apiRequest('/room-inventory/dashboard'), 
+          apiRequest('/bar-sales')
+        ]);
+        
+        // Parse responses safely
+        if (bookingsResponse.status === 'fulfilled' && bookingsResponse.value && bookingsResponse.value.ok) {
+          const bookingsData = await bookingsResponse.value.json();
+          bookings = bookingsData.success ? bookingsData.data || [] : [];
+        }
+        
+        if (roomsResponse.status === 'fulfilled' && roomsResponse.value && roomsResponse.value.ok) {
+          const roomsData = await roomsResponse.value.json();
+          rooms = roomsData.success ? roomsData.data || [] : [];
+        }
+        
+        if (barSalesResponse.status === 'fulfilled' && barSalesResponse.value && barSalesResponse.value.ok) {
+          const barSalesData = await barSalesResponse.value.json();
+          barSales = barSalesData.success ? barSalesData.data || [] : [];
+        }
       }
 
         // Filter by date range only if user has set specific dates (not default)

@@ -47,35 +47,24 @@ const fallbackRooms = [
 ];
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [rooms, setRooms] = useState(fallbackRooms); // Start with fallback data immediately
+  const [loading, setLoading] = useState(false); // No loading state needed
 
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        // Use the optimized available rooms endpoint
+        // Fetch in background without blocking UI
         const response = await apiRequest('/room-inventory/available');
         if (response && response.ok) {
           const data = await response.json();
           if (data && data.success && data.data && data.data.length > 0) {
-            // Data is already optimized from backend - no processing needed!
+            // Update with fresh data when available
             setRooms(data.data);
-          } else {
-            // Only use fallback data if API fails completely
-            console.warn('Using fallback room data');
-            setRooms(fallbackRooms);
           }
-        } else {
-          // Only use fallback data if API fails completely
-          console.warn('Using fallback room data');
-          setRooms(fallbackRooms);
         }
       } catch (error) {
         console.error('Error fetching rooms:', error);
-        // Use fallback data on error
-        setRooms(fallbackRooms);
-      } finally {
-        setLoading(false);
+        // Keep using fallback data on error
       }
     };
 
@@ -97,14 +86,6 @@ export default function RoomsPage() {
   const formatPrice = (price) => {
     return `₦${price?.toLocaleString() || '0'}`;
   };
-
-  if (loading) {
-    return (
-      <section className="container mx-auto py-12 animate-fade-in">
-        <div className="text-center text-[#7B3F00] text-lg py-12">Loading rooms...</div>
-      </section>
-    );
-  }
 
   return (
     <section className="container mx-auto py-12 animate-fade-in">

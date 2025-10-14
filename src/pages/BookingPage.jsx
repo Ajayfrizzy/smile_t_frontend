@@ -243,8 +243,8 @@ const BookingPage = () => {
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl animate-slide-in-up animate-delay-200">
-        {/* Room Image Section */}
-        <div className="order-2 lg:order-1">
+        {/* Room Image Section - Order 1 on mobile (top), order 1 on desktop (left) */}
+        <div className="order-1">
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <img 
               src="/assets/images/executive_suite_room.jpg" 
@@ -280,8 +280,8 @@ const BookingPage = () => {
           </div>
         </div>
 
-        {/* Booking Form Section */}
-        <div className="order-1 lg:order-2">
+        {/* Booking Form - Order 2 on mobile (bottom), order 2 on desktop (right) */}
+        <div className="order-2">
           <form
             onSubmit={handleSubmit}
             className="space-y-4 bg-white p-6 rounded-lg shadow-lg"

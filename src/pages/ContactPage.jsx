@@ -100,8 +100,8 @@ const ContactPage = () => {
             </div>
           </div>
 
-          {/* Logo Image */}
-          <div className="flex justify-center md:justify-end">
+          {/* Logo Image - Hidden on mobile, visible on desktop */}
+          <div className="hidden md:flex justify-center md:justify-end">
             <div className="md:w-1/2 p-6 flex items-center justify-end bg-gradient-to-br from-gray-50 to-white">
               <img
                 src={Logo}

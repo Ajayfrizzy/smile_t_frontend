@@ -15,7 +15,9 @@ import {
   User,
   ChevronDown,
   Plus,
-  Eye
+  Eye,
+  ShoppingCart,
+  Wine
 } from 'lucide-react';
 
 const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab }) => {
@@ -38,9 +40,9 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
   }, [profileDropdown]);
 
   // Get navigation items based on user role
-  const getNavigationItems = (role) => {
+    const getNavigationItems = (role) => {
     const baseItems = [
-      { id: 'overview', name: 'Overview', icon: Home, roles: ['superadmin', 'supervisor', 'receptionist'] },
+      { id: 'overview', name: 'Overview', icon: Home, roles: ['superadmin', 'supervisor', 'receptionist', 'barmen'] }
     ];
 
     const roleSpecificItems = [
@@ -50,13 +52,18 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       { id: 'drinks', name: 'Drinks Management', icon: Package, roles: ['superadmin'] },
       { id: 'bookings', name: 'Bookings', icon: FileText, roles: ['superadmin', 'supervisor', 'receptionist'] },
       { id: 'bar-sales', name: 'Bar Sales', icon: BarChart3, roles: ['superadmin', 'supervisor'] },
+      { id: 'analytics', name: 'Analytics', icon: BarChart3, roles: ['superadmin'] },
       
       // Receptionist - Front Desk
+      { id: 'rooms', name: 'Available Rooms', icon: Bed, roles: ['receptionist'] },
       { id: 'check-in', name: 'Check In/Out', icon: Bed, roles: ['receptionist'] },
       
-      // Barmen - Bar Operations
-      { id: 'create-sale', name: 'Create Sale', icon: Plus, roles: ['barmen'] },
-      { id: 'view-inventory', name: 'View Inventory', icon: Eye, roles: ['barmen'] },
+      // Barmen specific
+      { id: 'create-sale', name: 'Create Sale', icon: ShoppingCart, roles: ['barmen'] },
+      { id: 'view-inventory', name: 'View Inventory', icon: Wine, roles: ['barmen'] },
+      
+      // Common items
+            // Settings removed from sidebar as requested
     ];
 
     return [...baseItems, ...roleSpecificItems].filter(item => 
@@ -77,7 +84,7 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
       'superadmin': 'Super Administrator',
       'supervisor': 'Supervisor',
       'receptionist': 'Receptionist',
-      'barmen': 'Barmen'
+      'barmen': 'Barman'
     };
     return roleMap[role] || role;
   };

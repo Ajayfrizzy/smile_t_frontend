@@ -745,6 +745,8 @@ const SuperAdminDashboard = () => {
         return <RoomInventoryManagement />;
       case 'drinks':
         return <DrinksManagement />;
+      case 'analytics':
+        return <TransactionsAnalytics bookingsData={bookingsData} barSalesData={barSalesData} />;
       case 'bookings':
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -947,6 +949,7 @@ const SuperAdminDashboard = () => {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drink</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff & Role</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -958,11 +961,26 @@ const SuperAdminDashboard = () => {
                           <tr key={sale.id || index}>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                {sale.drinks?.drink_name || 'Unknown Drink'}
+                                {sale.drinks?.name || sale.drinks?.drink_name || sale.drink_name || 'Unknown Drink'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {sale.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{sale.staff_name || 'Unknown'}</div>
+                                <div>
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    sale.staff_role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
+                                    sale.staff_role === 'barmen' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {sale.staff_role === 'superadmin' ? '👑 Admin' :
+                                     sale.staff_role === 'barmen' ? '🍷 Barman' : 'Unknown'}
+                                  </span>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               ₦{sale.unit_price?.toLocaleString() || '0'}
@@ -999,8 +1017,6 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         );
-      case 'analytics':
-        return <TransactionsAnalytics refreshTrigger={refreshTrigger} />;
       case 'reports':
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -1417,9 +1433,17 @@ const SuperAdminDashboard = () => {
                     required
                     value={salesForm.quantity}
                     onChange={(e) => {
-                      const quantity = parseInt(e.target.value) || 0;
-                      const total = quantity * salesForm.price_per_unit;
-                      setSalesForm(prev => ({...prev, quantity, total_amount: total}));
+                      const value = e.target.value;
+                      // Allow empty string for clearing
+                      if (value === '') {
+                        setSalesForm(prev => ({...prev, quantity: '', total_amount: 0}));
+                        return;
+                      }
+                      const quantity = parseInt(value);
+                      if (!isNaN(quantity) && quantity >= 0) {
+                        const total = quantity * salesForm.price_per_unit;
+                        setSalesForm(prev => ({...prev, quantity, total_amount: total}));
+                      }
                     }}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
                   />

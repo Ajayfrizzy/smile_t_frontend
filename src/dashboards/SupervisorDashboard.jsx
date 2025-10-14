@@ -6,17 +6,22 @@ import {
   Globe,
   User,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import { getRoomTypeById } from '../utils/roomTypes';
+import toast from 'react-hot-toast';
 
 const SupervisorDashboard = () => {
+  // Get user info from localStorage first
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
   const [activeTab, setActiveTab] = useState('overview');
   const [bookingsData, setBookingsData] = useState([]);
   const [barSalesData, setBarSalesData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     name: user.name || '',
@@ -31,47 +36,117 @@ const SupervisorDashboard = () => {
     todaySales: 0
   });
 
-  // Get user info from localStorage
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    
+    if (settingsForm.newPassword !== settingsForm.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiRequest('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          current_password: settingsForm.currentPassword,
+          new_password: settingsForm.newPassword
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success('Password updated successfully');
+          setSettingsForm({
+            ...settingsForm,
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          });
+        } else {
+          toast.error(data.message || 'Failed to update password');
+        }
+      } else {
+        toast.error('Failed to update password');
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSettingsChange = (e) => {
+    const { name, value } = e.target;
+    setSettingsForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       
-      // Fetch supervisor viewing data - only bookings and bar sales
+      // Fetch supervisor viewing data - bookings and bar sales
       const [bookingsRes, barSalesRes] = await Promise.allSettled([
         apiRequest('/bookings'),
-        apiRequest('/drinks/sales')
+        apiRequest('/bar-sales')
       ]);
 
-      const bookingsArray = bookingsRes.status === 'fulfilled' && bookingsRes.value.ok 
-        ? await bookingsRes.value.json() : { success: false, data: [] };
-      const barSalesArray = barSalesRes.status === 'fulfilled' && barSalesRes.value.ok 
-        ? await barSalesRes.value.json() : { success: false, data: [] };
+      // Process bookings data
+      let processedBookings = [];
+      if (bookingsRes.status === 'fulfilled' && bookingsRes.value && bookingsRes.value.ok) {
+        const bookingsData = await bookingsRes.value.json();
+        if (bookingsData.success) {
+          processedBookings = bookingsData.data || [];
+          setBookingsData(processedBookings);
+        }
+      }
 
-      const bookings = bookingsArray.success ? bookingsArray.data : [];
-      const barSales = barSalesArray.success ? barSalesArray.data : [];
+      // Process bar sales data
+      let processedBarSales = [];
+      if (barSalesRes.status === 'fulfilled' && barSalesRes.value && barSalesRes.value.ok) {
+        const barSalesData = await barSalesRes.value.json();
+        if (barSalesData.success) {
+          processedBarSales = barSalesData.data || [];
+          setBarSalesData(processedBarSales);
+        }
+      }
 
-      setBookingsData(bookings);
-      setBarSalesData(barSales);
+      // Calculate stats from fetched data
+      const totalBookings = processedBookings.length;
+      const totalBarSalesCount = processedBarSales.length;
+      const bookingsRevenue = processedBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
+      const barSalesRevenue = processedBarSales.reduce((sum, sale) => sum + (sale.total_amount || sale.amount || 0), 0);
+      const totalAmount = bookingsRevenue + barSalesRevenue;
 
-      // Calculate stats
+      // Filter today's data
       const today = new Date().toISOString().split('T')[0];
-      
-      const stats = {
-        totalBookings: bookings.length,
-        totalSales: barSales.reduce((sum, sale) => sum + (sale.total_amount || 0), 0),
-        todayBookings: bookings.filter(booking => booking.created_at?.startsWith(today)).length,
-        todaySales: barSales
-          .filter(sale => sale.created_at?.startsWith(today))
-          .reduce((sum, sale) => sum + (sale.total_amount || 0), 0)
-      };
+      const todayBookings = processedBookings.filter(booking => {
+        const bookingDate = booking.created_at || booking.check_in;
+        return bookingDate && bookingDate.startsWith(today);
+      });
 
-      setDashboardStats(stats);
+      const todayBarSales = processedBarSales.filter(sale => {
+        const saleDate = sale.created_at || sale.date;
+        return saleDate && saleDate.startsWith(today);
+      });
+
+      // Update dashboard stats
+      setDashboardStats({
+        totalBookings,
+        totalSales: totalAmount,
+        totalBarSales: barSalesRevenue,
+        totalDrinkSales: totalBarSalesCount,
+        todayBookings: todayBookings.length,
+        todaySales: todayBarSales.reduce((sum, sale) => sum + (sale.total_amount || sale.amount || 0), 0)
+      });
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -89,20 +164,11 @@ const SupervisorDashboard = () => {
   };
 
   const filterBookings = () => {
-    if (!searchTerm) return bookingsData;
-    return bookingsData.filter(booking => 
-      booking.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.guest_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.transaction_ref?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return bookingsData;
   };
 
   const filterBarSales = () => {
-    if (!searchTerm) return barSalesData;
-    return barSalesData.filter(sale => 
-      sale.drinks?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.staff_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return barSalesData;
   };
 
   const OverviewView = () => (
@@ -110,11 +176,27 @@ const SupervisorDashboard = () => {
       <h3 className="text-lg font-medium text-gray-900">Dashboard Overview</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Transactions */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Transactions</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {(dashboardStats.totalBookings + dashboardStats.totalDrinkSales) || 0}
+              </p>
+              <p className="text-sm text-gray-500">₦{dashboardStats.totalSales?.toLocaleString() || '0'}</p>
+            </div>
+            <div className="p-3 bg-indigo-100 rounded-full">
+              <BarChart3 className="w-6 h-6 text-indigo-600" />
+            </div>
+          </div>
+        </div>
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Bookings</p>
               <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalBookings}</p>
+              <p className="text-sm text-gray-500">₦{(dashboardStats.totalSales - dashboardStats.totalBarSales)?.toLocaleString() || '0'}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <Calendar className="w-6 h-6 text-blue-600" />
@@ -138,7 +220,8 @@ const SupervisorDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Bar Sales</p>
-              <p className="text-2xl font-bold text-gray-900">₦{dashboardStats.totalSales.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalDrinkSales || 0}</p>
+              <p className="text-sm text-gray-500">₦{dashboardStats.totalBarSales?.toLocaleString() || '0'}</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
               <DollarSign className="w-6 h-6 text-purple-600" />
@@ -174,15 +257,14 @@ const SupervisorDashboard = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {bookingsData.slice(0, 5).map((booking, index) => {
-                const roomType = getRoomTypeById(booking.room_id) || {};
-                return (
+                  return (
                   <tr key={booking.id || index}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{booking.guest_name}</div>
                       <div className="text-sm text-gray-500">{booking.guest_email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {roomType.room_type || 'Unknown'}
+                      {booking.room_type_name || booking.room_type || 'Unknown Room'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -220,9 +302,8 @@ const SupervisorDashboard = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {barSalesData.slice(0, 5).map((sale, index) => (
                 <tr key={sale.id || index}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{sale.drinks?.name || 'Unknown'}</div>
-                    <div className="text-sm text-gray-500">{sale.drinks?.category || 'N/A'}</div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {sale.drinks?.name || sale.drinks?.drink_name || sale.drink_name || 'Unknown'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {sale.quantity || 0}
@@ -257,9 +338,8 @@ const SupervisorDashboard = () => {
     }
 
     try {
-      const payload = {
-        name: settingsForm.name
-      };
+      setLoading(true);
+      const payload = {};
 
       if (settingsForm.newPassword) {
         payload.currentPassword = settingsForm.currentPassword;
@@ -274,20 +354,13 @@ const SupervisorDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast.success('Settings updated successfully!');
-          // Update user name in localStorage if it was changed
-          if (settingsForm.name !== user.name) {
-            const updatedUser = { ...user, name: settingsForm.name };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-            window.location.reload(); // Refresh to update UI
-          }
-          // Clear password fields
-          setSettingsForm(prev => ({
-            ...prev,
+          toast.success('Password updated successfully!');
+          // Clear password fields without page refresh
+          setSettingsForm({
             currentPassword: '',
             newPassword: '',
             confirmPassword: ''
-          }));
+          });
         } else {
           toast.error(data.message || 'Failed to update settings');
         }
@@ -298,6 +371,8 @@ const SupervisorDashboard = () => {
     } catch (error) {
       console.error('Settings update error:', error);
       toast.error('Error updating settings: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -347,7 +422,7 @@ const SupervisorDashboard = () => {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <Eye className="w-5 h-5 text-gray-500" />
+                    <EyeOff className="w-5 h-5 text-gray-500" />
                   ) : (
                     <Eye className="w-5 h-5 text-gray-500" />
                   )}
@@ -373,7 +448,7 @@ const SupervisorDashboard = () => {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <Eye className="w-5 h-5 text-gray-500" />
+                    <EyeOff className="w-5 h-5 text-gray-500" />
                   ) : (
                     <Eye className="w-5 h-5 text-gray-500" />
                   )}
@@ -399,7 +474,7 @@ const SupervisorDashboard = () => {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <Eye className="w-5 h-5 text-gray-500" />
+                    <EyeOff className="w-5 h-5 text-gray-500" />
                   ) : (
                     <Eye className="w-5 h-5 text-gray-500" />
                   )}
@@ -450,7 +525,81 @@ const SupervisorDashboard = () => {
       case 'bar-sales':
         return <BarSalesView />;
       case 'settings':
-        return <Settings />;
+        return (
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Settings</h3>
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-[#7B3F00] rounded-full flex items-center justify-center">
+                  <User className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-medium text-gray-900">{user.name}</h4>
+                  <p className="text-gray-500 capitalize">{user.role}</p>
+                  <p className="text-sm text-gray-400">Staff ID: {user.staff_id}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">Current Password</label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="currentPassword"
+                      value={settingsForm.currentPassword}
+                      onChange={handleSettingsChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#7B3F00] focus:border-[#7B3F00]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">New Password</label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="newPassword"
+                      value={settingsForm.newPassword}
+                      onChange={handleSettingsChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#7B3F00] focus:border-[#7B3F00]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={settingsForm.confirmPassword}
+                      onChange={handleSettingsChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#7B3F00] focus:border-[#7B3F00]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showPassword"
+                    checked={showPassword}
+                    onChange={() => setShowPassword(!showPassword)}
+                    className="h-4 w-4 text-[#7B3F00] focus:ring-[#7B3F00] border-gray-300 rounded"
+                  />
+                  <label htmlFor="showPassword" className="ml-2 block text-sm text-gray-900">
+                    Show password
+                  </label>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-[#7B3F00] text-white rounded-md hover:bg-[#5d2f00] transition-colors"
+                  >
+                    {loading ? 'Updating...' : 'Update Password'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
       default:
         return <OverviewView />;
     }
@@ -460,24 +609,12 @@ const SupervisorDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">All Bookings</h3>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search bookings..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
-            />
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          </div>
-          <button
-            onClick={fetchDashboardData}
-            className="p-2 text-gray-500 hover:text-gray-700"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
-        </div>
+        <button
+          onClick={fetchDashboardData}
+          className="p-2 text-gray-500 hover:text-gray-700"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -497,7 +634,6 @@ const SupervisorDashboard = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filterBookings().map((booking, index) => {
-                const roomType = getRoomTypeById(booking.room_id) || {};
                 return (
                   <tr key={booking.id || index}>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -507,7 +643,7 @@ const SupervisorDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {roomType.room_type || 'Unknown'}
+                      {booking.room_type_name || booking.room_type || 'Unknown Room'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {booking.check_in}
@@ -552,24 +688,12 @@ const SupervisorDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">Bar Sales</h3>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search sales..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
-            />
-            <BarChart3 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          </div>
-          <button
-            onClick={fetchDashboardData}
-            className="p-2 text-gray-500 hover:text-gray-700"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
-        </div>
+        <button
+          onClick={fetchDashboardData}
+          className="p-2 text-gray-500 hover:text-gray-700"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -591,10 +715,7 @@ const SupervisorDashboard = () => {
                 <tr key={sale.id || index}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {sale.drinks?.name || 'Unknown Drink'}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {sale.drinks?.category || 'N/A'}
+                      {sale.drinks?.name || sale.drinks?.drink_name || sale.drink_name || 'Unknown Drink'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
