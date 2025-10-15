@@ -953,8 +953,8 @@ const SuperAdminDashboard = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {booking.transaction_ref}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex flex-col gap-2">
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-2 min-w-[200px]">
                                   {/* Action dropdown for active bookings */}
                                   {!ROOM_FREEING_STATUSES.includes(booking.status) ? (
                                     <select
@@ -968,7 +968,7 @@ const SuperAdminDashboard = () => {
                                         e.target.value = ''; // Reset dropdown
                                       }}
                                       disabled={loading}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="w-full min-w-[200px] px-3 py-2.5 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                                       defaultValue=""
                                     >
                                       <option value="" disabled>Select Action</option>
