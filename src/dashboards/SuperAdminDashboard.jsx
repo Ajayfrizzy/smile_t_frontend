@@ -20,6 +20,31 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 
+// Status-based booking system constants
+const ROOM_FREEING_STATUSES = ['checked_out', 'completed', 'cancelled', 'no_show', 'voided'];
+
+const STATUS_LABELS = {
+  pending: 'Pending Payment',
+  confirmed: 'Confirmed',
+  checked_in: 'Checked In',
+  checked_out: 'Checked Out',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show: 'No Show',
+  voided: 'Voided'
+};
+
+const STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
+  checked_in: 'bg-green-100 text-green-800 border-green-300',
+  checked_out: 'bg-gray-100 text-gray-800 border-gray-300',
+  completed: 'bg-purple-100 text-purple-800 border-purple-300',
+  cancelled: 'bg-red-100 text-red-800 border-red-300',
+  no_show: 'bg-orange-100 text-orange-800 border-orange-300',
+  voided: 'bg-gray-100 text-gray-600 border-gray-300'
+};
+
 const SuperAdminDashboard = () => {
   const { toasts, toast, removeToast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
@@ -427,7 +452,8 @@ const SuperAdminDashboard = () => {
   };
 
   const handleDeleteBooking = async (bookingId) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) {
+    // ⚠️ Warning: Prefer using status changes (cancelled, no_show, voided) instead of deletion
+    if (!confirm('⚠️ PERMANENT DELETION!\n\nConsider using "Cancelled" status instead to preserve booking history.\n\nAre you absolutely sure you want to delete this booking?')) {
       return;
     }
 
@@ -441,18 +467,63 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          toast.success('Booking cancelled successfully!');
+          toast.success('Booking deleted successfully!');
           fetchDashboardData(); // Refresh data
           setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
         } else {
-          toast.error(data?.message || 'Failed to cancel booking');
+          toast.error(data?.message || 'Failed to delete booking');
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData?.message || 'Failed to cancel booking');
+        toast.error(errorData?.message || 'Failed to delete booking');
       }
     } catch (error) {
-      toast.error('Error cancelling booking: ' + error.message);
+      toast.error('Error deleting booking: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Status change handler for booking lifecycle management
+  const handleStatusChange = async (bookingId, newStatus) => {
+    // Show confirmation for certain statuses
+    const confirmMessages = {
+      cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
+      no_show: 'Guest did not arrive? Room will be freed immediately.',
+      voided: 'Mark as void? Use this only for errors or duplicates.',
+      checked_out: 'Confirm guest check-out? Room will become available.',
+      completed: 'Mark booking as completed? Room will be freed if not already.'
+    };
+    
+    if (confirmMessages[newStatus]) {
+      if (!confirm(confirmMessages[newStatus])) {
+        return;
+      }
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await apiRequest(`/bookings/${bookingId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          toast.success(`Booking status updated to ${STATUS_LABELS[newStatus]}`);
+          fetchDashboardData(); // Refresh data
+          setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
+        } else {
+          toast.error(data?.message || 'Failed to update status');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData?.message || 'Failed to update status');
+      }
+    } catch (error) {
+      toast.error('Error updating booking status: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -872,12 +943,8 @@ const SuperAdminDashboard = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                  booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {booking.status}
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                                  {STATUS_LABELS[booking.status] || booking.status}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -886,15 +953,86 @@ const SuperAdminDashboard = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {booking.transaction_ref}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button
-                                  onClick={() => handleDeleteBooking(booking.id)}
-                                  disabled={loading}
-                                  className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 px-3 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title="Cancel Booking"
-                                >
-                                  Cancel
-                                </button>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex flex-col gap-2">
+                                  {/* Status change buttons based on current status */}
+                                  {!ROOM_FREEING_STATUSES.includes(booking.status) && (
+                                    <div className="flex gap-2 flex-wrap">
+                                      {booking.status === 'confirmed' && (
+                                        <button
+                                          onClick={() => handleStatusChange(booking.id, 'checked_in')}
+                                          disabled={loading}
+                                          className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                          title="Mark guest as checked in"
+                                        >
+                                          Check In
+                                        </button>
+                                      )}
+                                      {booking.status === 'checked_in' && (
+                                        <button
+                                          onClick={() => handleStatusChange(booking.id, 'checked_out')}
+                                          disabled={loading}
+                                          className="bg-green-50 text-green-600 hover:bg-green-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                          title="Check out guest - room will be freed"
+                                        >
+                                          Check Out
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                                        disabled={loading}
+                                        className="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                        title="Cancel booking - room will be freed"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleStatusChange(booking.id, 'no_show')}
+                                        disabled={loading}
+                                        className="bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                        title="Guest didn't show up - room will be freed"
+                                      >
+                                        No-Show
+                                      </button>
+                                      <button
+                                        onClick={() => handleStatusChange(booking.id, 'voided')}
+                                        disabled={loading}
+                                        className="bg-gray-50 text-gray-600 hover:bg-gray-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                        title="Void booking (for errors/duplicates)"
+                                      >
+                                        Void
+                                      </button>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Delete button - only for active bookings with strong warning */}
+                                  {!ROOM_FREEING_STATUSES.includes(booking.status) ? (
+                                    <button
+                                      onClick={() => handleDeleteBooking(booking.id)}
+                                      disabled={loading}
+                                      className="bg-red-600 text-white hover:bg-red-700 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                      title="⚠️ Permanent deletion - use Cancel instead!"
+                                    >
+                                      ⚠️ Delete
+                                    </button>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-500 italic">
+                                        Room Freed
+                                      </span>
+                                      {booking.status === 'checked_out' && (
+                                        <button
+                                          onClick={() => handleStatusChange(booking.id, 'completed')}
+                                          disabled={loading}
+                                          className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                          title="Mark as completed"
+                                        >
+                                          Complete
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1258,7 +1396,17 @@ const SuperAdminDashboard = () => {
                 >
                   <option value="">Select a room type</option>
                   {roomInventory.length > 0 ? (
-                    roomInventory.filter(room => (room.available_rooms || 0) > 0).map((room) => {
+                    /* Sort rooms by price: lowest to highest */
+                    [...roomInventory]
+                      .filter(room => (room.available_rooms || 0) > 0)
+                      .sort((a, b) => {
+                        const roomTypeA = getRoomTypeById(a.room_type_id);
+                        const roomTypeB = getRoomTypeById(b.room_type_id);
+                        const priceA = roomTypeA?.price_per_night || 0;
+                        const priceB = roomTypeB?.price_per_night || 0;
+                        return priceA - priceB;
+                      })
+                      .map((room) => {
                       const roomType = getRoomTypeById(room.room_type_id);
                       return (
                         <option key={room.id} value={room.room_type_id}>

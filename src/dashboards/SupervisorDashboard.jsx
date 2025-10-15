@@ -14,6 +14,29 @@ import { apiRequest } from '../utils/api';
 import { getRoomTypeById } from '../utils/roomTypes';
 import toast from 'react-hot-toast';
 
+// Status-based booking system constants (view-only for supervisor)
+const STATUS_LABELS = {
+  pending: 'Pending Payment',
+  confirmed: 'Confirmed',
+  checked_in: 'Checked In',
+  checked_out: 'Checked Out',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show: 'No Show',
+  voided: 'Voided'
+};
+
+const STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
+  checked_in: 'bg-green-100 text-green-800 border-green-300',
+  checked_out: 'bg-gray-100 text-gray-800 border-gray-300',
+  completed: 'bg-purple-100 text-purple-800 border-purple-300',
+  cancelled: 'bg-red-100 text-red-800 border-red-300',
+  no_show: 'bg-orange-100 text-orange-800 border-orange-300',
+  voided: 'bg-gray-100 text-gray-600 border-gray-300'
+};
+
 const SupervisorDashboard = () => {
   // Get user info from localStorage first
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -267,12 +290,8 @@ const SupervisorDashboard = () => {
                       {booking.room_type_name || booking.room_type || 'Unknown Room'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {booking.status}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                        {STATUS_LABELS[booking.status] || booking.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -660,12 +679,8 @@ const SupervisorDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {booking.status}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                        {STATUS_LABELS[booking.status] || booking.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

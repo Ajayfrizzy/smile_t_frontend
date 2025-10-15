@@ -24,6 +24,31 @@ import { apiRequest } from '../utils/api';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
 import toast from 'react-hot-toast';
 
+// Status-based booking system constants
+const ROOM_FREEING_STATUSES = ['checked_out', 'completed', 'cancelled', 'no_show', 'voided'];
+
+const STATUS_LABELS = {
+  pending: 'Pending Payment',
+  confirmed: 'Confirmed',
+  checked_in: 'Checked In',
+  checked_out: 'Checked Out',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show: 'No Show',
+  voided: 'Voided'
+};
+
+const STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
+  checked_in: 'bg-green-100 text-green-800 border-green-300',
+  checked_out: 'bg-gray-100 text-gray-800 border-gray-300',
+  completed: 'bg-purple-100 text-purple-800 border-purple-300',
+  cancelled: 'bg-red-100 text-red-800 border-red-300',
+  no_show: 'bg-orange-100 text-orange-800 border-orange-300',
+  voided: 'bg-gray-100 text-gray-600 border-gray-300'
+};
+
 
 const ReceptionistDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -583,7 +608,16 @@ const ReceptionistDashboard = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {roomInventory.map((room, index) => {
+          {/* Sort rooms by price: lowest to highest */}
+          {[...roomInventory]
+            .sort((a, b) => {
+              const roomTypeA = getRoomTypeById(a.room_type_id);
+              const roomTypeB = getRoomTypeById(b.room_type_id);
+              const priceA = roomTypeA?.price_per_night || 0;
+              const priceB = roomTypeB?.price_per_night || 0;
+              return priceA - priceB;
+            })
+            .map((room, index) => {
           const roomType = getRoomTypeById(room.room_type_id);
           return (
             <div key={room.id || index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -842,6 +876,46 @@ const ReceptionistDashboard = () => {
       }
     };
 
+    // Status change handler for booking lifecycle management
+    const handleStatusChange = async (bookingId, newStatus) => {
+      // Show confirmation for certain statuses
+      const confirmMessages = {
+        cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
+        no_show: 'Guest did not arrive? Room will be freed immediately.',
+        checked_in: 'Confirm guest check-in?',
+        checked_out: 'Confirm guest check-out? Room will become available.'
+      };
+      
+      if (confirmMessages[newStatus]) {
+        if (!confirm(confirmMessages[newStatus])) {
+          return;
+        }
+      }
+      
+      try {
+        const response = await apiRequest(`/bookings/${bookingId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ status: newStatus })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            toast.success(`Booking status updated to ${STATUS_LABELS[newStatus]}`);
+            fetchDashboardData();
+          } else {
+            toast.error(data.message || 'Failed to update status');
+          }
+        } else {
+          const errorData = await response.json();
+          toast.error(errorData.message || 'Failed to update status');
+        }
+      } catch (error) {
+        console.error('Status change error:', error);
+        toast.error('Error updating booking status: ' + error.message);
+      }
+    };
+
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-gray-900">Check-In / Check-Out Management</h3>
@@ -888,35 +962,55 @@ const ReceptionistDashboard = () => {
                           {booking.check_out}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            booking.status === 'checked_in' ? 'bg-green-100 text-green-800' :
-                            booking.status === 'checked_out' ? 'bg-blue-100 text-blue-800' :
-                            booking.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {booking.status === 'checked_in' ? '🟢 Checked In' :
-                             booking.status === 'checked_out' ? '🔵 Checked Out' :
-                             booking.status === 'completed' ? '✅ Completed' : 
-                             '⏳ Confirmed'}
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                            {STATUS_LABELS[booking.status] || booking.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          {isCheckInDay && booking.status === 'confirmed' && (
-                            <button
-                              onClick={() => handleCheckIn(booking.id)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              Check In
-                            </button>
-                          )}
-                          {isCheckOutDay && booking.status === 'checked_in' && (
-                            <button
-                              onClick={() => handleCheckOut(booking.id)}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              Check Out
-                            </button>
-                          )}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Status change buttons based on current status */}
+                            {!ROOM_FREEING_STATUSES.includes(booking.status) && (
+                              <>
+                                {booking.status === 'confirmed' && isCheckInDay && (
+                                  <button
+                                    onClick={() => handleStatusChange(booking.id, 'checked_in')}
+                                    className="bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1 rounded text-xs font-medium transition-colors"
+                                    title="Check in guest"
+                                  >
+                                    Check In
+                                  </button>
+                                )}
+                                {booking.status === 'checked_in' && isCheckOutDay && (
+                                  <button
+                                    onClick={() => handleStatusChange(booking.id, 'checked_out')}
+                                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded text-xs font-medium transition-colors"
+                                    title="Check out guest - room will be freed"
+                                  >
+                                    Check Out
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                                  className="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                  title="Cancel booking - room will be freed"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(booking.id, 'no_show')}
+                                  className="bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                  title="Guest didn't show up"
+                                >
+                                  No-Show
+                                </button>
+                              </>
+                            )}
+                            {ROOM_FREEING_STATUSES.includes(booking.status) && (
+                              <span className="text-xs text-gray-500 italic px-2 py-1">
+                                Room Freed
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
