@@ -980,7 +980,7 @@ const ReceptionistDashboard = () => {
                                     Check In
                                   </button>
                                 )}
-                                {booking.status === 'checked_in' && isCheckOutDay && (
+                                {booking.status === 'checked_in' && (
                                   <button
                                     onClick={() => handleStatusChange(booking.id, 'checked_out')}
                                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded text-xs font-medium transition-colors"

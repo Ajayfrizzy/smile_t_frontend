@@ -955,66 +955,34 @@ const SuperAdminDashboard = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex flex-col gap-2">
-                                  {/* Status change buttons based on current status */}
-                                  {!ROOM_FREEING_STATUSES.includes(booking.status) && (
-                                    <div className="flex gap-2 flex-wrap">
+                                  {/* Action dropdown for active bookings */}
+                                  {!ROOM_FREEING_STATUSES.includes(booking.status) ? (
+                                    <select
+                                      onChange={(e) => {
+                                        const action = e.target.value;
+                                        if (action === 'delete') {
+                                          handleDeleteBooking(booking.id);
+                                        } else if (action) {
+                                          handleStatusChange(booking.id, action);
+                                        }
+                                        e.target.value = ''; // Reset dropdown
+                                      }}
+                                      disabled={loading}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      defaultValue=""
+                                    >
+                                      <option value="" disabled>Select Action</option>
                                       {booking.status === 'confirmed' && (
-                                        <button
-                                          onClick={() => handleStatusChange(booking.id, 'checked_in')}
-                                          disabled={loading}
-                                          className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                          title="Mark guest as checked in"
-                                        >
-                                          Check In
-                                        </button>
+                                        <option value="checked_in">✓ Check In</option>
                                       )}
                                       {booking.status === 'checked_in' && (
-                                        <button
-                                          onClick={() => handleStatusChange(booking.id, 'checked_out')}
-                                          disabled={loading}
-                                          className="bg-green-50 text-green-600 hover:bg-green-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                          title="Check out guest - room will be freed"
-                                        >
-                                          Check Out
-                                        </button>
+                                        <option value="checked_out">✓ Check Out</option>
                                       )}
-                                      <button
-                                        onClick={() => handleStatusChange(booking.id, 'cancelled')}
-                                        disabled={loading}
-                                        className="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                        title="Cancel booking - room will be freed"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        onClick={() => handleStatusChange(booking.id, 'no_show')}
-                                        disabled={loading}
-                                        className="bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                        title="Guest didn't show up - room will be freed"
-                                      >
-                                        No-Show
-                                      </button>
-                                      <button
-                                        onClick={() => handleStatusChange(booking.id, 'voided')}
-                                        disabled={loading}
-                                        className="bg-gray-50 text-gray-600 hover:bg-gray-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                        title="Void booking (for errors/duplicates)"
-                                      >
-                                        Void
-                                      </button>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Delete button - only for active bookings with strong warning */}
-                                  {!ROOM_FREEING_STATUSES.includes(booking.status) ? (
-                                    <button
-                                      onClick={() => handleDeleteBooking(booking.id)}
-                                      disabled={loading}
-                                      className="bg-red-600 text-white hover:bg-red-700 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                      title="⚠️ Permanent deletion - use Cancel instead!"
-                                    >
-                                      ⚠️ Delete
-                                    </button>
+                                      <option value="cancelled">✗ Cancel Booking</option>
+                                      <option value="no_show">⊘ Mark No-Show</option>
+                                      <option value="voided">◯ Void (Error/Duplicate)</option>
+                                      <option value="delete" className="text-red-600">⚠️ Delete (Permanent)</option>
+                                    </select>
                                   ) : (
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-gray-500 italic">

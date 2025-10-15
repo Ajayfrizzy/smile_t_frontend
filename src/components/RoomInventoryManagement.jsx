@@ -261,7 +261,14 @@ const RoomInventoryManagement = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {roomInventory.map((inventory) => {
+                {roomInventory
+                  .sort((a, b) => {
+                    // Sort by price (lowest to highest)
+                    const priceA = getRoomTypeById(a.room_type_id)?.price_per_night || 0;
+                    const priceB = getRoomTypeById(b.room_type_id)?.price_per_night || 0;
+                    return priceA - priceB;
+                  })
+                  .map((inventory) => {
                   const roomType = getRoomTypeById(inventory.room_type_id);
                   return (
                     <tr key={inventory.id} className="hover:bg-gray-50">
