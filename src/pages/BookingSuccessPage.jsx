@@ -31,8 +31,8 @@ const BookingSuccessPage = () => {
       }
 
       try {
-        // Verify payment with backend
-        const response = await apiRequest('/flutterwave-verify', {
+        // Verify payment with backend - using /payments/verify endpoint
+        const response = await apiRequest('/payments/verify', {
           method: 'POST',
           body: JSON.stringify({
             tx_ref: txRef,
