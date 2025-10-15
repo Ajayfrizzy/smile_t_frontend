@@ -51,7 +51,13 @@ const BookingPage = () => {
         if (response && response.ok) {
           const data = await response.json();
           if (data && data.success && data.data) {
-            setRooms(data.data);
+            // Sort rooms by price: lowest to highest
+            const sortedRooms = [...data.data].sort((a, b) => {
+              const priceA = a.price || a.price_per_night || a.amount || 0;
+              const priceB = b.price || b.price_per_night || b.amount || 0;
+              return priceA - priceB;
+            });
+            setRooms(sortedRooms);
           } else {
             setRooms([]);
           }

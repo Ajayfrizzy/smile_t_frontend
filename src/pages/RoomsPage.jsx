@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiRequest } from "../utils/api";
 
 // Fallback room data in case API is not available
+// Sorted by price: lowest to highest
 const fallbackRooms = [
   {
     room_type: "Classic Single",
@@ -58,8 +59,14 @@ export default function RoomsPage() {
         if (response && response.ok) {
           const data = await response.json();
           if (data && data.success && data.data && data.data.length > 0) {
-            // Update with fresh data when available
-            setRooms(data.data);
+            // Sort rooms by price: lowest to highest
+            const sortedRooms = [...data.data].sort((a, b) => {
+              const priceA = a.price_per_night || a.price || 0;
+              const priceB = b.price_per_night || b.price || 0;
+              return priceA - priceB;
+            });
+            // Update with sorted data when available
+            setRooms(sortedRooms);
           }
         }
       } catch (error) {
