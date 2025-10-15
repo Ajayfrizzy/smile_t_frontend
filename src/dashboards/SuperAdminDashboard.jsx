@@ -976,7 +976,13 @@ const SuperAdminDashboard = () => {
                                         <option value="checked_in">✓ Check In</option>
                                       )}
                                       {booking.status === 'checked_in' && (
-                                        <option value="checked_out">✓ Check Out</option>
+                                        <>
+                                          <option value="checked_out">✓ Check Out (2-step)</option>
+                                          <option value="completed">✓✓ Check Out & Complete</option>
+                                        </>
+                                      )}
+                                      {booking.status === 'checked_out' && (
+                                        <option value="completed">✓ Mark Completed</option>
                                       )}
                                       <option value="cancelled">✗ Cancel Booking</option>
                                       <option value="no_show">⊘ Mark No-Show</option>
@@ -985,19 +991,9 @@ const SuperAdminDashboard = () => {
                                     </select>
                                   ) : (
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs text-gray-500 italic">
-                                        Room Freed
+                                      <span className="text-xs text-green-600 font-medium">
+                                        ✅ Booking Finalized
                                       </span>
-                                      {booking.status === 'checked_out' && (
-                                        <button
-                                          onClick={() => handleStatusChange(booking.id, 'completed')}
-                                          disabled={loading}
-                                          className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                          title="Mark as completed"
-                                        >
-                                          Complete
-                                        </button>
-                                      )}
                                     </div>
                                   )}
                                 </div>

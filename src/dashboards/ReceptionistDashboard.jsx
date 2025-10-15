@@ -853,15 +853,18 @@ const ReceptionistDashboard = () => {
 
     const handleCheckOut = async (bookingId) => {
       try {
+        // ✅ IMPROVED: Set to 'completed' instead of 'checked_out' to avoid workflow confusion
+        // This prevents SuperAdmin from seeing a "Complete" button after receptionist checks out
+        // Room is freed immediately and booking is finalized in one step
         const response = await apiRequest(`/bookings/${bookingId}`, {
           method: 'PUT',
-          body: JSON.stringify({ status: 'checked_out' })
+          body: JSON.stringify({ status: 'completed' })
         });
 
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            toast.success('Guest checked out successfully!');
+            toast.success('Guest checked out successfully - booking completed!');
             fetchDashboardData();
           } else {
             toast.error(data.message || 'Failed to check out guest');
@@ -966,49 +969,37 @@ const ReceptionistDashboard = () => {
                             {STATUS_LABELS[booking.status] || booking.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex gap-2 flex-wrap">
-                            {/* Status change buttons based on current status */}
-                            {!ROOM_FREEING_STATUSES.includes(booking.status) && (
-                              <>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-2 min-w-[200px]">
+                            {/* Action dropdown for active bookings */}
+                            {!ROOM_FREEING_STATUSES.includes(booking.status) ? (
+                              <select
+                                onChange={(e) => {
+                                  const action = e.target.value;
+                                  if (action) {
+                                    handleStatusChange(booking.id, action);
+                                  }
+                                  e.target.value = ''; // Reset dropdown
+                                }}
+                                className="w-full min-w-[200px] px-3 py-2.5 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Select Action</option>
                                 {booking.status === 'confirmed' && isCheckInDay && (
-                                  <button
-                                    onClick={() => handleStatusChange(booking.id, 'checked_in')}
-                                    className="bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1 rounded text-xs font-medium transition-colors"
-                                    title="Check in guest"
-                                  >
-                                    Check In
-                                  </button>
+                                  <option value="checked_in">✓ Check In Guest</option>
                                 )}
                                 {booking.status === 'checked_in' && (
-                                  <button
-                                    onClick={() => handleStatusChange(booking.id, 'checked_out')}
-                                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded text-xs font-medium transition-colors"
-                                    title="Check out guest - room will be freed"
-                                  >
-                                    Check Out
-                                  </button>
+                                  <option value="completed">✓ Check Out & Complete</option>
                                 )}
-                                <button
-                                  onClick={() => handleStatusChange(booking.id, 'cancelled')}
-                                  className="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors"
-                                  title="Cancel booking - room will be freed"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={() => handleStatusChange(booking.id, 'no_show')}
-                                  className="bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded text-xs font-medium transition-colors"
-                                  title="Guest didn't show up"
-                                >
-                                  No-Show
-                                </button>
-                              </>
-                            )}
-                            {ROOM_FREEING_STATUSES.includes(booking.status) && (
-                              <span className="text-xs text-gray-500 italic px-2 py-1">
-                                Room Freed
-                              </span>
+                                <option value="cancelled">✗ Cancel Booking</option>
+                                <option value="no_show">⊘ Mark No-Show</option>
+                              </select>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-green-600 font-medium">
+                                  ✅ Booking Finalized
+                                </span>
+                              </div>
                             )}
                           </div>
                         </td>
