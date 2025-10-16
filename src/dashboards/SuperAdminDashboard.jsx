@@ -976,10 +976,7 @@ const SuperAdminDashboard = () => {
                                         <option value="checked_in">✓ Check In</option>
                                       )}
                                       {booking.status === 'checked_in' && (
-                                        <>
-                                          <option value="checked_out">✓ Check Out (2-step)</option>
-                                          <option value="completed">✓✓ Check Out & Complete</option>
-                                        </>
+                                        <option value="completed">✓✓ Check Out & Complete</option>
                                       )}
                                       {booking.status === 'checked_out' && (
                                         <option value="completed">✓ Mark Completed</option>
