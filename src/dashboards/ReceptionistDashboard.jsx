@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { 
   Calendar, 
   Users, 
@@ -64,6 +65,15 @@ const ReceptionistDashboard = () => {
   const [roomInventory, setRoomInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingFilter, setBookingFilter] = useState('all');
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    onConfirm: () => {}
+  });
 
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingForm, setBookingForm] = useState({
@@ -897,22 +907,68 @@ const ReceptionistDashboard = () => {
 
     // Status change handler for booking lifecycle management
     const handleStatusChange = async (bookingId, newStatus) => {
-      // Show toast confirmation for certain statuses
-      const confirmMessages = {
-        cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
-        no_show: 'Guest did not arrive? Room will be freed immediately.',
-        checked_in: 'Confirm guest check-in?',
-        completed: 'Check out & complete this booking? Room will be returned to inventory.'
+      // Define confirmation messages and types
+      const confirmationConfig = {
+        cancelled: {
+          title: 'Cancel Booking',
+          message: 'Are you sure you want to cancel this booking? The room will be freed immediately and made available for other guests.',
+          type: 'danger'
+        },
+        no_show: {
+          title: 'Mark as No-Show',
+          message: 'Guest did not arrive? This will mark the booking as no-show and free the room immediately.',
+          type: 'warning'
+        },
+        checked_in: {
+          title: 'Check In Guest',
+          message: 'Confirm that the guest has arrived and is being checked in?',
+          type: 'info'
+        },
+        completed: {
+          title: 'Check Out & Complete',
+          message: 'Check out this guest and mark booking as completed? The room will be returned to inventory and made available immediately.',
+          type: 'success'
+        }
       };
       
-      if (confirmMessages[newStatus]) {
-        // Use toast.promise for better UX with confirmation
-        const confirmation = window.confirm(confirmMessages[newStatus]);
-        if (!confirmation) {
-          return;
-        }
+      // Show confirmation modal for certain statuses
+      if (confirmationConfig[newStatus]) {
+        const config = confirmationConfig[newStatus];
+        setConfirmationModal({
+          isOpen: true,
+          title: config.title,
+          message: config.message,
+          type: config.type,
+          onConfirm: async () => {
+            // Perform the actual status change
+            try {
+              const response = await apiRequest(`/bookings/${bookingId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus })
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                  toast.success(`✅ ${data.message || `Booking status updated to ${STATUS_LABELS[newStatus]}`}`);
+                  fetchDashboardData();
+                } else {
+                  toast.error(data.message || 'Failed to update status');
+                }
+              } else {
+                const errorData = await response.json();
+                toast.error(errorData.message || 'Failed to update status');
+              }
+            } catch (error) {
+              console.error('Status change error:', error);
+              toast.error('Error updating booking status: ' + error.message);
+            }
+          }
+        });
+        return;
       }
       
+      // For statuses without confirmation, update directly
       try {
         const response = await apiRequest(`/bookings/${bookingId}`, {
           method: 'PUT',
@@ -1350,6 +1406,18 @@ const ReceptionistDashboard = () => {
           </div>
         </div>
       )}
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmText="Yes, Proceed"
+        cancelText="No, Cancel"
+      />
     </>
   );
 };

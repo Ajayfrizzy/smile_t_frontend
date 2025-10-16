@@ -4,6 +4,7 @@ import StaffManagement from '../components/StaffManagement';
 import RoomInventoryManagement from '../components/RoomInventoryManagement';
 import DrinksManagement from '../components/DrinksManagement';
 import TransactionsAnalytics from '../components/TransactionsAnalytics';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
@@ -66,6 +67,16 @@ const SuperAdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [bookingFilter, setBookingFilter] = useState('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    onConfirm: () => {}
+  });
+  
   const [bookingForm, setBookingForm] = useState({
     guest_name: '',
     guest_email: '',
@@ -496,22 +507,77 @@ const SuperAdminDashboard = () => {
 
   // Status change handler for booking lifecycle management
   const handleStatusChange = async (bookingId, newStatus) => {
-    // Show confirmation for certain statuses
-    const confirmMessages = {
-      cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
-      no_show: 'Guest did not arrive? Room will be freed immediately.',
-      voided: 'Mark as void? Use this only for errors or duplicates.',
-      checked_in: 'Confirm guest check-in?',
-      completed: 'Check out & complete this booking? Room will be returned to inventory.'
+    // Define confirmation messages and types
+    const confirmationConfig = {
+      cancelled: {
+        title: 'Cancel Booking',
+        message: 'Are you sure you want to cancel this booking? The room will be freed immediately and made available for other guests.',
+        type: 'danger'
+      },
+      no_show: {
+        title: 'Mark as No-Show',
+        message: 'Guest did not arrive? This will mark the booking as no-show and free the room immediately.',
+        type: 'warning'
+      },
+      voided: {
+        title: 'Void Booking',
+        message: 'Mark this booking as void? Use this only for errors or duplicate bookings. This action should not be used for normal cancellations.',
+        type: 'danger'
+      },
+      checked_in: {
+        title: 'Check In Guest',
+        message: 'Confirm that the guest has arrived and is being checked in?',
+        type: 'info'
+      },
+      completed: {
+        title: 'Check Out & Complete',
+        message: 'Check out this guest and mark booking as completed? The room will be returned to inventory and made available immediately.',
+        type: 'success'
+      }
     };
     
-    if (confirmMessages[newStatus]) {
-      const confirmation = window.confirm(confirmMessages[newStatus]);
-      if (!confirmation) {
-        return;
-      }
+    // Show confirmation modal for certain statuses
+    if (confirmationConfig[newStatus]) {
+      const config = confirmationConfig[newStatus];
+      setConfirmationModal({
+        isOpen: true,
+        title: config.title,
+        message: config.message,
+        type: config.type,
+        onConfirm: async () => {
+          // Perform the actual status change
+          try {
+            setLoading(true);
+            
+            const response = await apiRequest(`/bookings/${bookingId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ status: newStatus })
+            });
+            
+            if (response && response.ok) {
+              const data = await response.json();
+              if (data && data.success) {
+                toast.success(`✅ ${data.message || `Booking status updated to ${STATUS_LABELS[newStatus]}`}`);
+                fetchDashboardData(); // Refresh data
+                setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
+              } else {
+                toast.error(data?.message || 'Failed to update status');
+              }
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+              toast.error(errorData?.message || 'Failed to update status');
+            }
+          } catch (error) {
+            toast.error('Error updating booking status: ' + error.message);
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
+      return;
     }
     
+    // For statuses without confirmation, update directly
     try {
       setLoading(true);
       
@@ -1626,6 +1692,18 @@ const SuperAdminDashboard = () => {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmText="Yes, Proceed"
+        cancelText="No, Cancel"
+      />
     </>
   );
 };
