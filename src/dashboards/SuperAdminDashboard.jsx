@@ -230,6 +230,16 @@ const SuperAdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Auto-refresh bookings every 45 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData();
+      console.log('📊 Auto-refreshing dashboard data...');
+    }, 45000); // 45 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Refresh data when switching to key tabs
   useEffect(() => {
     if (activeTab === 'room-inventory' || activeTab === 'overview' || activeTab === 'analytics') {
@@ -491,12 +501,13 @@ const SuperAdminDashboard = () => {
       cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
       no_show: 'Guest did not arrive? Room will be freed immediately.',
       voided: 'Mark as void? Use this only for errors or duplicates.',
-      checked_out: 'Confirm guest check-out? Room will become available.',
-      completed: 'Mark booking as completed? Room will be freed if not already.'
+      checked_in: 'Confirm guest check-in?',
+      completed: 'Check out & complete this booking? Room will be returned to inventory.'
     };
     
     if (confirmMessages[newStatus]) {
-      if (!confirm(confirmMessages[newStatus])) {
+      const confirmation = window.confirm(confirmMessages[newStatus]);
+      if (!confirmation) {
         return;
       }
     }
@@ -512,7 +523,7 @@ const SuperAdminDashboard = () => {
       if (response && response.ok) {
         const data = await response.json();
         if (data && data.success) {
-          toast.success(`Booking status updated to ${STATUS_LABELS[newStatus]}`);
+          toast.success(`✅ ${data.message || `Booking status updated to ${STATUS_LABELS[newStatus]}`}`);
           fetchDashboardData(); // Refresh data
           setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
         } else {
@@ -878,6 +889,7 @@ const SuperAdminDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
@@ -928,6 +940,13 @@ const SuperAdminDashboard = () => {
                                 <div className="text-sm text-gray-900">
                                   {new Date(booking.check_in).toLocaleDateString()} - {new Date(booking.check_out).toLocaleDateString()}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                }) : '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${

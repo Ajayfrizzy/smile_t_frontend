@@ -84,6 +84,16 @@ const ReceptionistDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Auto-refresh bookings every 45 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData();
+      console.log('📊 Auto-refreshing booking data...');
+    }, 45000); // 45 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Refresh data when switching to rooms tab
   useEffect(() => {
     if (activeTab === 'rooms') {
@@ -494,6 +504,7 @@ const ReceptionistDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -503,7 +514,7 @@ const ReceptionistDashboard = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center">
+                  <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <Calendar className="w-12 h-12 text-gray-400 mb-4" />
                       <p className="text-gray-500 text-lg font-medium">
@@ -537,6 +548,13 @@ const ReceptionistDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {booking.check_out}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
@@ -853,9 +871,7 @@ const ReceptionistDashboard = () => {
 
     const handleCheckOut = async (bookingId) => {
       try {
-        // ✅ IMPROVED: Set to 'completed' instead of 'checked_out' to avoid workflow confusion
-        // This prevents SuperAdmin from seeing a "Complete" button after receptionist checks out
-        // Room is freed immediately and booking is finalized in one step
+        // Set to 'completed' instead of 'checked_out' to avoid workflow confusion
         const response = await apiRequest(`/bookings/${bookingId}`, {
           method: 'PUT',
           body: JSON.stringify({ status: 'completed' })
@@ -881,16 +897,18 @@ const ReceptionistDashboard = () => {
 
     // Status change handler for booking lifecycle management
     const handleStatusChange = async (bookingId, newStatus) => {
-      // Show confirmation for certain statuses
+      // Show toast confirmation for certain statuses
       const confirmMessages = {
         cancelled: 'Mark this booking as cancelled? Room will be freed immediately.',
         no_show: 'Guest did not arrive? Room will be freed immediately.',
         checked_in: 'Confirm guest check-in?',
-        checked_out: 'Confirm guest check-out? Room will become available.'
+        completed: 'Check out & complete this booking? Room will be returned to inventory.'
       };
       
       if (confirmMessages[newStatus]) {
-        if (!confirm(confirmMessages[newStatus])) {
+        // Use toast.promise for better UX with confirmation
+        const confirmation = window.confirm(confirmMessages[newStatus]);
+        if (!confirmation) {
           return;
         }
       }
@@ -904,7 +922,7 @@ const ReceptionistDashboard = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            toast.success(`Booking status updated to ${STATUS_LABELS[newStatus]}`);
+            toast.success(`✅ ${data.message || `Booking status updated to ${STATUS_LABELS[newStatus]}`}`);
             fetchDashboardData();
           } else {
             toast.error(data.message || 'Failed to update status');
