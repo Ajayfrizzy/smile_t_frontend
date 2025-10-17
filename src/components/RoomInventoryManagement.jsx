@@ -3,15 +3,23 @@ import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
 import toast from 'react-hot-toast';
+import ConfirmationModal from './ConfirmationModal';
 
 const RoomInventoryManagement = () => {
   const [roomInventory, setRoomInventory] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
+  const [modalMode, setModalMode] = useState('add');
   const [currentInventory, setCurrentInventory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedRoomType, setSelectedRoomType] = useState(null);
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    onConfirm: () => {}
+  });
   const [formData, setFormData] = useState({
     room_type_id: '',
     available_rooms: 0,
@@ -126,33 +134,42 @@ const RoomInventoryManagement = () => {
   };
 
   const handleDelete = async (inventoryId) => {
-    if (!confirm('Are you sure you want to delete this room inventory?')) return;
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Delete Room Inventory',
+      message: 'Are you sure you want to delete this room inventory? This will remove the room type from your system. Any active bookings for this room type will be affected. This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          const response = await apiRequest(`/room-inventory/${inventoryId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      setLoading(true);
-      const response = await apiRequest(`/room-inventory/${inventoryId}`, {
-        method: 'DELETE'
-      });
-
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data && data.success) {
-          // Optimistic delete - remove from UI immediately
-          setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
-          
-          // Show success message
-          toast.success('Room inventory deleted successfully!');
-        } else {
-          setError(data?.message || 'Failed to delete room inventory');
+          if (response && response.ok) {
+            const data = await response.json();
+            if (data && data.success) {
+              // Optimistic delete - remove from UI immediately
+              setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
+              
+              // Show success message
+              toast.success('✅ Room inventory deleted successfully!');
+            } else {
+              setError(data?.message || 'Failed to delete room inventory');
+              toast.error(data?.message || 'Failed to delete room inventory');
+            }
+          } else {
+            setError('Failed to delete room inventory');
+            toast.error('Failed to delete room inventory');
+          }
+        } catch (err) {
+          setError('Error deleting room inventory: ' + err.message);
+          toast.error('Error deleting room inventory: ' + err.message);
+        } finally {
+          setLoading(false);
         }
-      } else {
-        setError('Failed to delete room inventory');
       }
-    } catch (err) {
-      setError('Error deleting room inventory: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const openModal = (mode, inventory = null) => {
@@ -479,6 +496,18 @@ const RoomInventoryManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmText="Yes, Delete"
+        cancelText="No, Cancel"
+      />
     </div>
   );
 };

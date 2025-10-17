@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import toast from 'react-hot-toast';
+import ConfirmationModal from './ConfirmationModal';
 
 const StaffManagement = () => {
   const [staff, setStaff] = useState([]);
@@ -11,6 +12,13 @@ const StaffManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    onConfirm: () => {}
+  });
   const [formData, setFormData] = useState({
     name: '',
     staff_id: '',
@@ -101,30 +109,39 @@ const StaffManagement = () => {
   };
 
   const handleDelete = async (staffId) => {
-    if (!confirm('Are you sure you want to delete this staff member?')) return;
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Delete Staff Member',
+      message: 'Are you sure you want to delete this staff member? This will remove their account and revoke their access to the system. This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          const response = await apiRequest(`/staff/${staffId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      setLoading(true);
-      const response = await apiRequest(`/staff/${staffId}`, {
-        method: 'DELETE'
-      });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const data = await response.json();
+          if (data && data.success) {
+            await fetchStaff();
+            toast.success('✅ Staff deleted successfully!');
+          } else {
+            setError(data?.message || 'Failed to delete staff');
+            toast.error(data?.message || 'Failed to delete staff');
+          }
+        } catch (err) {
+          const errorMsg = 'Error deleting staff: ' + err.message;
+          setError(errorMsg);
+          toast.error(errorMsg);
+        } finally {
+          setLoading(false);
+        }
       }
-
-      const data = await response.json();
-      if (data && data.success) {
-        await fetchStaff();
-        toast.success('Staff deleted successfully!');
-      } else {
-        setError(data?.message || 'Failed to delete staff');
-      }
-    } catch (err) {
-      setError('Error deleting staff: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const openModal = (mode, staffMember = null) => {
@@ -417,6 +434,18 @@ const StaffManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmText="Yes, Delete"
+        cancelText="No, Cancel"
+      />
     </div>
   );
 };

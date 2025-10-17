@@ -474,35 +474,39 @@ const SuperAdminDashboard = () => {
 
   const handleDeleteBooking = async (bookingId) => {
     // ⚠️ Warning: Prefer using status changes (cancelled, no_show, voided) instead of deletion
-    if (!confirm('⚠️ PERMANENT DELETION!\n\nConsider using "Cancelled" status instead to preserve booking history.\n\nAre you absolutely sure you want to delete this booking?')) {
-      return;
-    }
+    setConfirmationModal({
+      isOpen: true,
+      title: '⚠️ Permanent Deletion Warning',
+      message: 'You are about to permanently delete this booking from the database. This action cannot be undone!\n\n💡 RECOMMENDATION: Consider using the "Cancelled" status instead to preserve booking history for records and reporting.\n\nAre you absolutely sure you want to proceed with permanent deletion?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          
+          const response = await apiRequest(`/bookings/${bookingId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      setLoading(true);
-      
-      const response = await apiRequest(`/bookings/${bookingId}`, {
-        method: 'DELETE'
-      });
-
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data && data.success) {
-          toast.success('Booking deleted successfully!');
-          fetchDashboardData(); // Refresh data
-          setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
-        } else {
-          toast.error(data?.message || 'Failed to delete booking');
+          if (response && response.ok) {
+            const data = await response.json();
+            if (data && data.success) {
+              toast.success('✅ Booking deleted successfully!');
+              fetchDashboardData(); // Refresh data
+              setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
+            } else {
+              toast.error(data?.message || 'Failed to delete booking');
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            toast.error(errorData?.message || 'Failed to delete booking');
+          }
+        } catch (error) {
+          toast.error('Error deleting booking: ' + error.message);
+        } finally {
+          setLoading(false);
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData?.message || 'Failed to delete booking');
       }
-    } catch (error) {
-      toast.error('Error deleting booking: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   // Status change handler for booking lifecycle management
@@ -607,34 +611,38 @@ const SuperAdminDashboard = () => {
   };
 
   const handleDeleteBarSale = async (saleId) => {
-    if (!confirm('Are you sure you want to delete this sale?')) {
-      return;
-    }
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Delete Bar Sale',
+      message: 'Are you sure you want to delete this bar sale record? This action will permanently remove the sale from the system and cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          
+          const response = await apiRequest(`/bar-sales/${saleId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      setLoading(true);
-      
-      const response = await apiRequest(`/bar-sales/${saleId}`, {
-        method: 'DELETE'
-      });
-
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data && data.success) {
-          toast.success('Sale deleted successfully!');
-          fetchDashboardData(); // Refresh data
-        } else {
-          toast.error(data?.message || 'Failed to delete sale');
+          if (response && response.ok) {
+            const data = await response.json();
+            if (data && data.success) {
+              toast.success('✅ Sale deleted successfully!');
+              fetchDashboardData(); // Refresh data
+            } else {
+              toast.error(data?.message || 'Failed to delete sale');
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            toast.error(errorData?.message || 'Failed to delete sale');
+          }
+        } catch (error) {
+          toast.error('Error deleting sale: ' + error.message);
+        } finally {
+          setLoading(false);
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(errorData?.message || 'Failed to delete sale');
       }
-    } catch (error) {
-      toast.error('Error deleting sale: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const handleSalesSubmit = async (e) => {
