@@ -744,14 +744,24 @@ const ReceptionistDashboard = () => {
             >
               <option value="">Select a room type</option>
               {roomInventory.length > 0 ? (
-                roomInventory.filter(room => (room.available_rooms || 0) > 0).map((room) => {
-                  const roomType = getRoomTypeById(room.room_type_id);
-                  return (
-                    <option key={room.id} value={room.room_type_id}>
-                      {roomType?.room_type || 'Unknown Room'} - ₦{roomType?.price_per_night?.toLocaleString() || '0'}/night ({room.available_rooms || 0} available)
-                    </option>
-                  );
-                })
+                roomInventory
+                  .filter(room => (room.available_rooms || 0) > 0)
+                  .sort((a, b) => {
+                    // Sort by price: lowest to highest
+                    const roomTypeA = getRoomTypeById(a.room_type_id);
+                    const roomTypeB = getRoomTypeById(b.room_type_id);
+                    const priceA = roomTypeA?.price_per_night || 0;
+                    const priceB = roomTypeB?.price_per_night || 0;
+                    return priceA - priceB;
+                  })
+                  .map((room) => {
+                    const roomType = getRoomTypeById(room.room_type_id);
+                    return (
+                      <option key={room.id} value={room.room_type_id}>
+                        {roomType?.room_type || 'Unknown Room'} - ₦{roomType?.price_per_night?.toLocaleString() || '0'}/night ({room.available_rooms || 0} available)
+                      </option>
+                    );
+                  })
               ) : (
                 <option value="" disabled>No rooms available</option>
               )}
@@ -1312,14 +1322,24 @@ const ReceptionistDashboard = () => {
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B3F00] focus:border-transparent"
                   >
                     <option value="">Select a room type</option>
-                    {roomInventory.filter(room => (room.available_rooms || 0) > 0).map(room => {
-                      const roomType = getRoomTypeById(room.room_type_id);
-                      return (
-                        <option key={room.room_type_id} value={room.room_type_id}>
-                          {roomType?.room_type} - ₦{(roomType?.price_per_night || 0).toLocaleString()}/night ({room.available_rooms} available)
-                        </option>
-                      );
-                    })}
+                    {roomInventory
+                      .filter(room => (room.available_rooms || 0) > 0)
+                      .sort((a, b) => {
+                        // Sort by price: lowest to highest
+                        const roomTypeA = getRoomTypeById(a.room_type_id);
+                        const roomTypeB = getRoomTypeById(b.room_type_id);
+                        const priceA = roomTypeA?.price_per_night || 0;
+                        const priceB = roomTypeB?.price_per_night || 0;
+                        return priceA - priceB;
+                      })
+                      .map(room => {
+                        const roomType = getRoomTypeById(room.room_type_id);
+                        return (
+                          <option key={room.room_type_id} value={room.room_type_id}>
+                            {roomType?.room_type} - ₦{(roomType?.price_per_night || 0).toLocaleString()}/night ({room.available_rooms} available)
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
 
