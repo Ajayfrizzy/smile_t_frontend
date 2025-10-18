@@ -96,8 +96,6 @@ function AppContent() {
                   <BarmenDashboard />
                 </ProtectedRoute>
               } />
-              {/* Debug route - can be removed in production */}
-              {/* <Route path="/debug-rooms" element={<DebugRooms />} /> */}
             </Routes>
           </FadeTransition>
         </main>
