@@ -45,8 +45,12 @@ const BookingPage = () => {
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-        // Use the room inventory endpoint
-        const response = await apiRequest("/room-inventory/available");
+        // Use the room inventory endpoint with cache headers
+        const response = await apiRequest("/room-inventory/available", {
+          headers: {
+            'Cache-Control': 'max-age=300' // Cache for 5 minutes
+          }
+        });
         
         if (response && response.ok) {
           const data = await response.json();
@@ -338,8 +342,12 @@ const BookingPage = () => {
           <div>
             <label className="block mb-1 font-medium">Room</label>
             {loadingRooms ? (
-              <div className="flex items-center gap-2">
-                <LoadingSpinner /> Loading rooms...
+              <div className="flex items-center justify-center gap-2 p-4 bg-gray-50 rounded border border-gray-300">
+                <svg className="animate-spin h-5 w-5 text-[#7B3F00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <span className="text-sm text-gray-600">Loading rooms...</span>
               </div>
             ) : (
               <select
