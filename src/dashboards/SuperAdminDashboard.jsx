@@ -5,6 +5,8 @@ import RoomInventoryManagement from '../components/RoomInventoryManagement';
 import DrinksManagement from '../components/DrinksManagement';
 import TransactionsAnalytics from '../components/TransactionsAnalytics';
 import ConfirmationModal from '../components/ConfirmationModal';
+import TwoFactorSetup from '../components/TwoFactorSetup';
+import PasswordChangeModal from '../components/PasswordChangeModal';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
@@ -17,7 +19,9 @@ import {
   Calendar,
   BarChart3,
   AlertTriangle,
-  User
+  User,
+  Shield,
+  Key
 } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 
@@ -60,6 +64,9 @@ const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSalesModal, setShowSalesModal] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordWarning, setPasswordWarning] = useState(null);
   const [roomInventory, setRoomInventory] = useState([]);
   const [drinksInventory, setDrinksInventory] = useState([]);
   const [bookingsData, setBookingsData] = useState([]);
@@ -261,6 +268,15 @@ const SuperAdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      
+      // Check for password warning
+      const verifyRes = await apiRequest('/api/auth/verify');
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        if (verifyData.passwordWarning) {
+          setPasswordWarning(verifyData.passwordWarning);
+        }
+      }
       
       // Fetch all dashboard data in parallel
       const [staffRes, roomsRes, bookingsRes, analyticsRes, drinksRes, barSalesRes] = await Promise.allSettled([
@@ -718,6 +734,70 @@ const SuperAdminDashboard = () => {
 
   const OverviewContent = () => (
     <div className="space-y-6">
+      {/* Password Warning Banner */}
+      {passwordWarning && (
+        <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-lg flex items-start justify-between">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-orange-500 mr-3 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-orange-800">Password Expiry Warning</h4>
+              <p className="text-sm text-orange-700 mt-1">{passwordWarning.message}</p>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="text-sm text-orange-600 hover:text-orange-800 underline mt-2 font-medium"
+              >
+                Change Password Now
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => setPasswordWarning(null)}
+            className="text-orange-500 hover:text-orange-700"
+          >
+            <span className="sr-only">Dismiss</span>
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Security Settings Card */}
+      <div className="bg-gradient-to-r from-[#FFD700]/10 to-[#7B3F00]/10 rounded-lg shadow-sm p-6 border border-[#FFD700]/30">
+        <h3 className="text-lg font-medium text-[#7B3F00] mb-4 flex items-center">
+          <Shield className="h-5 w-5 mr-2" />
+          Security Settings
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => setShow2FAModal(true)}
+            className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <Shield className="w-6 h-6 text-[#FFD700] group-hover:text-[#7B3F00]" />
+              {user.two_factor_enabled && (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                  Enabled
+                </span>
+              )}
+            </div>
+            <h4 className="font-medium text-gray-900">Two-Factor Authentication</h4>
+            <p className="text-sm text-gray-500 mt-1">
+              {user.two_factor_enabled ? 'Manage your 2FA settings' : 'Add an extra layer of security'}
+            </p>
+          </button>
+          
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <Key className="w-6 h-6 text-[#FFD700] group-hover:text-[#7B3F00]" />
+            </div>
+            <h4 className="font-medium text-gray-900">Change Password</h4>
+            <p className="text-sm text-gray-500 mt-1">Update your password regularly for security</p>
+          </button>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard
@@ -1711,6 +1791,20 @@ const SuperAdminDashboard = () => {
         type={confirmationModal.type}
         confirmText="Yes, Proceed"
         cancelText="No, Cancel"
+      />
+
+      {/* Two-Factor Authentication Modal */}
+      <TwoFactorSetup
+        isOpen={show2FAModal}
+        onClose={() => setShow2FAModal(false)}
+        userRole={user.role}
+      />
+
+      {/* Password Change Modal */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        passwordWarning={passwordWarning}
       />
     </>
   );
