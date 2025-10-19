@@ -53,7 +53,7 @@ export default function PasswordChangeModal({ isOpen, onClose, passwordWarning }
     setLoading(true);
 
     try {
-      const response = await apiRequest('/api/auth/change-password', {
+      const response = await apiRequest('/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({
           current_password: currentPassword,

@@ -7,7 +7,7 @@ let csrfToken = null;
 // Initialize CSRF token - call this on app startup
 export const initCSRF = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/csrf-token`, {
+    const response = await fetch(`${API_BASE_URL}/auth/csrf-token`, {
       credentials: 'include', // Include cookies in request
     });
     

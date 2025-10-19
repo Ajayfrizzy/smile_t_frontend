@@ -58,7 +58,7 @@ export default function LoginPage() {
         loginData.two_factor_token = form.two_factor_token;
       }
       
-      const response = await apiRequest('/api/auth/login', {
+      const response = await apiRequest('/auth/login', {
         method: 'POST',
         body: JSON.stringify(loginData),
       });
@@ -162,7 +162,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const response = await apiRequest('/api/auth/change-password', {
+      const response = await apiRequest('/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({
           current_password: form.password,

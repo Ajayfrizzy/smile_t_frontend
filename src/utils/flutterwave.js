@@ -80,7 +80,7 @@ export const openFlutterwaveCheckout = (config) => {
     redirect_url: `${secureAppUrl}/booking-success`,
     meta: {
       source: 'hotel-booking',
-      merchant_name: 'Smile Motel'
+      merchant_name: 'Smile-T'
     },
     customizations: {
       title: 'Smile-T Hotel Booking',
@@ -116,9 +116,11 @@ export const openFlutterwaveCheckout = (config) => {
 /**
  * Verify payment with backend
  */
+import { API_BASE_URL } from './api';
+
 export const verifyFlutterwavePayment = async (txRef, transactionId) => {
   try {
-    const response = await fetch('/api/flutterwave-verify', {
+    const response = await fetch(`${API_BASE_URL}/flutterwave/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +128,8 @@ export const verifyFlutterwavePayment = async (txRef, transactionId) => {
       body: JSON.stringify({
         tx_ref: txRef,
         transaction_id: transactionId
-      })
+      }),
+      credentials: 'include'
     });
 
     if (!response.ok) {

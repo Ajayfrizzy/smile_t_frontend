@@ -270,7 +270,7 @@ const SuperAdminDashboard = () => {
       setLoading(true);
       
       // Check for password warning
-      const verifyRes = await apiRequest('/api/auth/verify');
+      const verifyRes = await apiRequest('/auth/verify');
       if (verifyRes.ok) {
         const verifyData = await verifyRes.json();
         if (verifyData.passwordWarning) {

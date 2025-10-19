@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
     const verifyAuth = async () => {
       try {
         // Verify authentication via HTTP-only cookie
-        const response = await apiRequest('/api/auth/verify', {
+        const response = await apiRequest('/auth/verify', {
           method: 'GET',
         });
         

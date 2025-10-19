@@ -23,7 +23,7 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
   const handleSetup2FA = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest('/api/auth/setup-2fa', {
+      const response = await apiRequest('/auth/setup-2fa', {
         method: 'POST',
         body: JSON.stringify({}),
       });
@@ -56,7 +56,7 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
 
     setLoading(true);
     try {
-      const response = await apiRequest('/api/auth/verify-2fa-setup', {
+      const response = await apiRequest('/auth/verify-2fa-setup', {
         method: 'POST',
         body: JSON.stringify({ token: verificationCode }),
       });
@@ -93,7 +93,7 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
 
     setLoading(true);
     try {
-      const response = await apiRequest('/api/auth/disable-2fa', {
+      const response = await apiRequest('/auth/disable-2fa', {
         method: 'POST',
         body: JSON.stringify({
           password: disablePassword,

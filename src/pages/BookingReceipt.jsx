@@ -1,5 +1,3 @@
-import React from 'react';
-
 const BookingReceipt = ({ booking }) => {
   if (!booking) return <div>No booking found.</div>;
   return (
