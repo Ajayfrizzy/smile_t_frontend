@@ -1831,6 +1831,7 @@ const SuperAdminDashboard = () => {
         isOpen={show2FAModal}
         onClose={() => setShow2FAModal(false)}
         userRole={user.role}
+        is2FAEnabled={user.two_factor_enabled || false}
       />
 
       {/* Password Change Modal */}

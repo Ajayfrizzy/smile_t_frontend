@@ -90,13 +90,13 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar - Fixed Position */}
       <div className={`bg-white shadow-sm transition-all duration-300 ${
         sidebarOpen ? 'w-64' : 'w-20'
-      } flex flex-col fixed left-0 top-0 h-full z-30`}>
+      } flex flex-col fixed left-0 top-0 h-full z-30 overflow-y-auto`}>
         {/* Logo/Brand */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-[#7B3F00] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">ST</span>
@@ -111,7 +111,7 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -136,20 +136,21 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
         </nav>
 
         {/* Sidebar Toggle */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-full flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+            className="w-full flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className={`flex-1 flex flex-col ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 fixed top-0 right-0 left-0 z-20" style={{ marginLeft: sidebarOpen ? '256px' : '80px' }}>
+      {/* Main Content - Adjusted margin to account for fixed sidebar */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+        {/* Top Header - Fixed position with proper z-index */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 fixed top-0 right-0 z-20 transition-all duration-300" 
+                style={{ left: sidebarOpen ? '256px' : '80px' }}>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 capitalize">
@@ -220,15 +221,11 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-auto mt-16 h-screen">
-          <div className="h-full overflow-y-auto">
-            {children}
-          </div>
+        {/* Main Content Area - Scrollable */}
+        <main className="flex-1 p-6 mt-16 overflow-y-auto">
+          {children}
         </main>
       </div>
-
-
     </div>
   );
 };

@@ -65,15 +65,15 @@ export default function LoginPage() {
       
       const data = await response.json();
       
+      // Check if 2FA is required FIRST (even if success is false)
+      if (data.requires2FA) {
+        setRequires2FA(true);
+        toast.info('🔐 Please enter your 2FA code');
+        setLoading(false);
+        return;
+      }
+      
       if (response.ok && data.success) {
-        // Check if 2FA is required
-        if (data.requires2FA) {
-          setRequires2FA(true);
-          toast.info('🔐 Please enter your 2FA code');
-          setLoading(false);
-          return;
-        }
-        
         // Check if password is expired
         if (data.passwordExpired) {
           setPasswordExpired(true);

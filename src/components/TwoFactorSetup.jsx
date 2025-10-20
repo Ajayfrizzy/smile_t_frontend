@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, X, Check, Smartphone, Key, AlertCircle } from 'lucide-react';
 import Button from './Button';
 import { apiRequest } from '../utils/api';
 import toast from 'react-hot-toast';
 
-export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
+export default function TwoFactorSetup({ isOpen, onClose, userRole, is2FAEnabled }) {
   const [step, setStep] = useState('idle'); // idle, setup, verify, enabled
   const [qrCode, setQrCode] = useState(null);
   const [secret, setSecret] = useState('');
@@ -12,6 +12,13 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
   const [loading, setLoading] = useState(false);
   const [disablePassword, setDisablePassword] = useState('');
   const [disableCode, setDisableCode] = useState('');
+
+  // Set initial step based on 2FA status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('idle');
+    }
+  }, [isOpen]);
 
   // Only SuperAdmin can use 2FA
   if (userRole !== 'superadmin') {
@@ -154,6 +161,28 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
           {/* Idle State - Choose to Enable or Disable */}
           {step === 'idle' && (
             <div className="space-y-4">
+              {/* Current Status Badge */}
+              <div className={`p-4 rounded-lg border ${is2FAEnabled ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Shield className={`h-6 w-6 mr-2 ${is2FAEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                    <div>
+                      <p className="font-medium text-gray-900">Current Status</p>
+                      <p className={`text-sm ${is2FAEnabled ? 'text-green-700' : 'text-gray-600'}`}>
+                        2FA is currently {is2FAEnabled ? 'ENABLED' : 'DISABLED'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    is2FAEnabled 
+                      ? 'bg-green-100 text-green-800 border border-green-300' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                  }`}>
+                    {is2FAEnabled ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start">
                   <AlertCircle className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
@@ -167,40 +196,44 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole }) {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h3 className="font-medium text-gray-900">Supported Authenticator Apps:</h3>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center">
-                    <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
-                    Google Authenticator
-                  </li>
-                  <li className="flex items-center">
-                    <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
-                    Microsoft Authenticator
-                  </li>
-                  <li className="flex items-center">
-                    <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
-                    Authy
-                  </li>
-                </ul>
-              </div>
+              {!is2FAEnabled && (
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-900">Supported Authenticator Apps:</h3>
+                  <ul className="text-sm text-gray-600 space-y-2">
+                    <li className="flex items-center">
+                      <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
+                      Google Authenticator
+                    </li>
+                    <li className="flex items-center">
+                      <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
+                      Microsoft Authenticator
+                    </li>
+                    <li className="flex items-center">
+                      <Smartphone className="h-4 w-4 mr-2 text-[#FFD700]" />
+                      Authy
+                    </li>
+                  </ul>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3 pt-4">
-                <Button
-                  onClick={handleSetup2FA}
-                  loading={loading}
-                  className="w-full"
-                >
-                  <Shield className="h-5 w-5 mr-2" />
-                  Enable 2FA
-                </Button>
-                
-                <button
-                  onClick={() => setStep('disable')}
-                  className="w-full px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors text-sm font-medium"
-                >
-                  Disable 2FA
-                </button>
+                {!is2FAEnabled ? (
+                  <Button
+                    onClick={handleSetup2FA}
+                    loading={loading}
+                    className="w-full"
+                  >
+                    <Shield className="h-5 w-5 mr-2" />
+                    Enable 2FA
+                  </Button>
+                ) : (
+                  <button
+                    onClick={() => setStep('disable')}
+                    className="w-full px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors text-sm font-medium"
+                  >
+                    Disable 2FA
+                  </button>
+                )}
               </div>
             </div>
           )}
