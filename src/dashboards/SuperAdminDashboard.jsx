@@ -74,6 +74,10 @@ const SuperAdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [bookingFilter, setBookingFilter] = useState('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [cachedData, setCachedData] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [salesLoading, setSalesLoading] = useState(false);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -258,16 +262,28 @@ const SuperAdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Refresh data when switching to key tabs
+  // Refresh data when switching to key tabs - use cached data for instant display
   useEffect(() => {
     if (activeTab === 'room-inventory' || activeTab === 'overview' || activeTab === 'analytics') {
-      fetchDashboardData();
+      // Show cached data immediately if available and recent (within 2 minutes)
+      const now = Date.now();
+      if (cachedData && lastFetchTime && (now - lastFetchTime) < 120000) {
+        // Use cached data for instant display
+        setLoading(false);
+        // Optionally fetch fresh data in background without showing loading
+        fetchDashboardData(true);
+      } else {
+        // Fetch fresh data with loading indicator
+        fetchDashboardData();
+      }
     }
   }, [activeTab]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
       
       // Check for password warning
       const verifyRes = await apiRequest('/auth/verify');
@@ -417,8 +433,7 @@ const SuperAdminDashboard = () => {
       const currentOccupiedRooms = totalOccupiedRooms;
       
 
-
-      setDashboardData({
+      const updatedDashboardData = {
         totalStaff: staffArray.length,
         totalRooms,
         availableRooms,
@@ -430,7 +445,13 @@ const SuperAdminDashboard = () => {
         currentOccupiedRooms,
         occupancyRate,
         recentActivities: recentActivities.slice(0, 8)
-      });
+      };
+
+      setDashboardData(updatedDashboardData);
+      
+      // Cache the data with timestamp
+      setCachedData(updatedDashboardData);
+      setLastFetchTime(Date.now());
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -442,7 +463,7 @@ const SuperAdminDashboard = () => {
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setBookingLoading(true);
       
       // Prepare booking data with proper formatting to match backend
       const bookingData = {
@@ -472,7 +493,7 @@ const SuperAdminDashboard = () => {
           toast.success('Booking created successfully!');
           setShowBookingModal(false);
           resetBookingForm();
-          fetchDashboardData(); // Refresh data
+          fetchDashboardData(true); // Refresh data in background
           setRefreshTrigger(prev => prev + 1); // Trigger analytics refresh
         } else {
           toast.error(data?.message || 'Failed to create booking');
@@ -484,7 +505,7 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       toast.error('Error creating booking: ' + error.message);
     } finally {
-      setLoading(false);
+      setBookingLoading(false);
     }
   };
 
@@ -664,12 +685,12 @@ const SuperAdminDashboard = () => {
   const handleSalesSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSalesLoading(true);
       
       // Validate form data
       if (!salesForm.drink_id || !salesForm.quantity) {
         toast.error('Please select a drink and enter quantity');
-        setLoading(false);
+        setSalesLoading(false);
         return;
       }
 
@@ -678,7 +699,7 @@ const SuperAdminDashboard = () => {
 
       if (isNaN(drinkId) || isNaN(quantity) || quantity < 0) {
         toast.error('Please enter valid drink selection and quantity');
-        setLoading(false);
+        setSalesLoading(false);
         return;
       }
       
@@ -702,7 +723,7 @@ const SuperAdminDashboard = () => {
           toast.success('Sale recorded successfully!');
           setShowSalesModal(false);
           resetSalesForm();
-          fetchDashboardData(); // Refresh data
+          fetchDashboardData(true); // Refresh data in background
         } else {
           toast.error(data?.message || 'Failed to record sale');
         }
@@ -713,7 +734,7 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       toast.error('Error recording sale: ' + error.message);
     } finally {
-      setLoading(false);
+      setSalesLoading(false);
     }
   };
 
@@ -1633,10 +1654,16 @@ const SuperAdminDashboard = () => {
                 <button
                   type="submit"
                   form="booking-form"
-                  disabled={loading}
-                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-lg hover:bg-[#5d2f00] disabled:opacity-50"
+                  disabled={bookingLoading}
+                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-lg hover:bg-[#5d2f00] disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? 'Creating...' : 'Create Booking'}
+                  {bookingLoading && (
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  )}
+                  {bookingLoading ? 'Creating...' : 'Create Booking'}
                 </button>
               </div>
             </div>
@@ -1767,10 +1794,16 @@ const SuperAdminDashboard = () => {
                 <button
                   type="submit"
                   form="sales-form"
-                  disabled={loading || !salesForm.item_name}
-                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-lg hover:bg-[#5d2f00] disabled:opacity-50"
+                  disabled={salesLoading || !salesForm.item_name}
+                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-lg hover:bg-[#5d2f00] disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? 'Recording...' : 'Record Sale'}
+                  {salesLoading && (
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  )}
+                  {salesLoading ? 'Recording...' : 'Record Sale'}
                 </button>
               </div>
             </div>

@@ -479,9 +479,15 @@ const DrinksManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-md hover:bg-[#8B4513] transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[#7B3F00] text-white rounded-md hover:bg-[#8B4513] transition-colors disabled:opacity-50 flex items-center gap-2"
                   disabled={loading}
                 >
+                  {loading && (
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  )}
                   {loading ? 'Saving...' : modalMode === 'add' ? 'Add Drink' : 'Update Drink'}
                 </button>
               </div>

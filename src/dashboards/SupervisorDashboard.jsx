@@ -46,6 +46,8 @@ const SupervisorDashboard = () => {
   const [barSalesData, setBarSalesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [cachedData, setCachedData] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
   const [settingsForm, setSettingsForm] = useState({
     name: user.name || '',
     currentPassword: '',
@@ -112,9 +114,11 @@ const SupervisorDashboard = () => {
     }));
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
       
       // Fetch supervisor viewing data - bookings and bar sales
       const [bookingsRes, barSalesRes] = await Promise.allSettled([
@@ -162,19 +166,27 @@ const SupervisorDashboard = () => {
       });
 
       // Update dashboard stats
-      setDashboardStats({
+      const stats = {
         totalBookings,
         totalSales: totalAmount,
         totalBarSales: barSalesRevenue,
         totalDrinkSales: totalBarSalesCount,
         todayBookings: todayBookings.length,
         todaySales: todayBarSales.reduce((sum, sale) => sum + (sale.total_amount || sale.amount || 0), 0)
-      });
+      };
+      
+      setDashboardStats(stats);
+      
+      // Cache the data
+      setCachedData({ bookings: processedBookings, barSales: processedBarSales, stats });
+      setLastFetchTime(Date.now());
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   };
 
