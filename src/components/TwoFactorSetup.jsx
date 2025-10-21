@@ -71,9 +71,27 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole, is2FAEnabled
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Fetch fresh user data to update 2FA status
+        const verifyResponse = await apiRequest('/auth/verify', {
+          method: 'GET',
+        });
+
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json();
+          if (verifyData.success && verifyData.user) {
+            // Update localStorage with fresh user data
+            localStorage.setItem('user', JSON.stringify(verifyData.user));
+          }
+        }
+
         setStep('enabled');
         toast.success('✅ Two-factor authentication enabled successfully!');
         setVerificationCode('');
+        
+        // Reload page to reflect changes in UI
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         toast.error(data.message || 'Invalid verification code');
       }
@@ -111,11 +129,29 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole, is2FAEnabled
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Fetch fresh user data to update 2FA status
+        const verifyResponse = await apiRequest('/auth/verify', {
+          method: 'GET',
+        });
+
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json();
+          if (verifyData.success && verifyData.user) {
+            // Update localStorage with fresh user data
+            localStorage.setItem('user', JSON.stringify(verifyData.user));
+          }
+        }
+
         toast.success('✅ Two-factor authentication disabled');
         setDisablePassword('');
         setDisableCode('');
         setStep('idle');
         onClose();
+        
+        // Reload page to reflect changes in UI
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         toast.error(data.message || 'Failed to disable 2FA');
       }
@@ -221,7 +257,7 @@ export default function TwoFactorSetup({ isOpen, onClose, userRole, is2FAEnabled
                   <Button
                     onClick={handleSetup2FA}
                     loading={loading}
-                    className="w-full"
+                    className="w-full py-4 flex items-center justify-center"
                   >
                     <Shield className="h-5 w-5 mr-2" />
                     Enable 2FA
