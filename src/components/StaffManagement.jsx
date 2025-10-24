@@ -89,20 +89,32 @@ const StaffManagement = () => {
         });
       }
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Handle specific error messages from backend
+        if (data && data.message) {
+          toast.error(data.message);
+          setError(data.message);
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return;
       }
 
-      const data = await response.json();
       if (data && data.success) {
         await fetchStaff();
         closeModal();
         toast.success(`Staff ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
       } else {
-        setError(data?.message || `Failed to ${modalMode} staff`);
+        const errorMessage = data?.message || `Failed to ${modalMode} staff`;
+        toast.error(errorMessage);
+        setError(errorMessage);
       }
     } catch (err) {
-      setError(`Error ${modalMode === 'add' ? 'adding' : 'updating'} staff: ` + err.message);
+      const errorMessage = `Error ${modalMode === 'add' ? 'adding' : 'updating'} staff: ` + err.message;
+      toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -121,17 +133,32 @@ const StaffManagement = () => {
             method: 'DELETE'
           });
 
+          const data = await response.json();
+
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Handle specific error messages from backend
+            if (data && data.message) {
+              toast.error(data.message);
+              setError(data.message);
+            } else {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return;
           }
 
-          const data = await response.json();
           if (data && data.success) {
             await fetchStaff();
-            toast.success('✅ Staff deleted successfully!');
+            
+            // Show different message if deactivated vs deleted
+            if (data.deactivated) {
+              toast.success(data.message || '✅ Staff member deactivated due to existing records');
+            } else {
+              toast.success(data.message || '✅ Staff deleted successfully!');
+            }
           } else {
-            setError(data?.message || 'Failed to delete staff');
-            toast.error(data?.message || 'Failed to delete staff');
+            const errorMessage = data?.message || 'Failed to delete staff';
+            toast.error(errorMessage);
+            setError(errorMessage);
           }
         } catch (err) {
           const errorMsg = 'Error deleting staff: ' + err.message;
