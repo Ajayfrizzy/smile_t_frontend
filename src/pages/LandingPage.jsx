@@ -136,23 +136,23 @@ const LandingPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/rooms">
-              <Button
+              <button
                 size="lg"
                 className="w-full sm:w-auto bg-[#7B3F00] text-[#ffd700] flex items-center justify-center gap-2 px-6 py-3 rounded-md font-semibold hover:bg-[#FFD700] hover:text-[#7b3f00] transition-colors duration-300 shadow-lg"
               >
                 <span>Book Now</span>
                 <ArrowRight className="w-5 h-5" />
-              </Button>
+              </button>
             </Link>
             <Link to="/gallery">
-              <GoldButton
+              <button
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto bg-[#FFD700] text-[#7B3F00] flex items-center justify-center gap-2 px-6 py-3 rounded-md font-semibold hover:bg-[#7B3F00] hover:text-[#FFD700] transition-colors duration-300 border-none shadow-lg"
               >
                 <span>View Gallery</span>
                 <Camera className="w-5 h-5" />
-              </GoldButton>
+              </button>
             </Link>
           </div>
         </div>
