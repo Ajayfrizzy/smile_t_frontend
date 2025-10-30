@@ -182,12 +182,28 @@ const BookingPage = () => {
 
       // Payment integration (Flutterwave)
       try {
-        await loadFlutterwave();
+        // Validate Flutterwave public key is available
         const publicKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY;
-        if (!publicKey) throw new Error("Missing Flutterwave public key");
         
+        console.log("Environment check:", {
+          hasPublicKey: !!publicKey,
+          publicKeyLength: publicKey?.length,
+          envMode: import.meta.env.MODE
+        });
+        
+        if (!publicKey || publicKey.trim() === '') {
+          throw new Error(
+            "Payment system is not configured. Please contact support. " +
+            "(Missing Flutterwave API key in environment variables)"
+          );
+        }
+        
+        // Load Flutterwave script
+        await loadFlutterwave();
+        
+        // Open payment modal
         openFlutterwaveCheckout({
-          public_key: publicKey,
+          public_key: publicKey.trim(),
           tx_ref: reference,
           amount: total_amount,
           currency: "NGN",
