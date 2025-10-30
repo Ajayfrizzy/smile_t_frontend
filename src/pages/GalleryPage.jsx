@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ImageOff, Play } from 'lucide-react';
 
 const GalleryPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -46,7 +46,8 @@ const GalleryPage = () => {
       image: '/assets/images/deluxe_large_room.jpg',
       title: 'Deluxe Room',
       category: 'rooms',
-      description: 'Comfortable and elegantly designed deluxe room'
+      description: 'Comfortable and elegantly designed deluxe room',
+      type: 'image'
     },
     {
       id: '2',
@@ -230,6 +231,68 @@ const GalleryPage = () => {
       category: 'facilities',
       description: 'Beautiful exterior architecture of Smile-T Continental Hotel'
     },
+    {
+      id: '28',
+      image: '/assets/images/guest_food.jpg',
+      title: 'Great Food',
+      category: 'restaurant',
+      description: 'Excellent cuisine served at our restaurant'
+    },
+    {
+      id: '29',
+      image: '/assets/images/guest1.jpg',
+      title: 'Guest Relaxing',
+      category: 'rooms',
+      description: 'Our guest enjoying a fine dining experience'
+    },
+    {
+      id: '30',
+      image: '/assets/images/guest2.jpg',
+      title: 'Guest relaxing',
+      category: 'rooms',
+      description: 'Our guest relaxing in there room in one of our luxury suites'
+    },
+    {
+      id: '31',
+      image: '/assets/images/guest3.jpg',
+      title: 'Guest relaxing',
+      category: 'rooms',
+      description: 'Our guest enjoying their meal in one of the rooms'
+    },
+    {
+      id: '32',
+      image: '/assets/images/gym_session1.jpg',
+      title: 'Guest working out',
+      category: 'facilities',
+      description: 'Our guest working out in our well equipped gym'
+    },
+    {
+      id: '33',
+      image: '/assets/images/gym_session2.jpg',
+      title: 'Guest training',
+      category: 'facilities',
+      description: 'Our guest training in our well equipped gym',
+      type: 'image'
+    },
+    // Video entries - add your hotel tour videos here
+    {
+      id: '34',
+      video: '/assets/videos/vid_1.mp4',
+      thumbnail: '/assets/images/exterior.jpg', //
+      title: 'Hotel Tour',
+      category: 'facilities',
+      description: 'Take a virtual tour of our beautiful hotel',
+      type: 'video'
+    },
+    {
+      id: '35',
+      video: '/assets/videos/vid_2.mp4',
+      thumbnail: '/assets/images/gym1.jpg',
+      title: 'Gym Session',
+      category: 'facilities',
+      description: 'Gym session video',
+      type: 'video'
+    },
   ];
 
   const categories = [
@@ -357,14 +420,35 @@ const GalleryPage = () => {
               onClick={() => openLightbox(item)}
             >
               <div className="w-full h-full overflow-hidden">
-                <ImageWithFallback
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  itemId={item.id}
-                  onLoad={handleImageLoad}
-                  onError={handleImageError}
-                />
+                {item.type === 'video' ? (
+                  // Video thumbnail with play icon
+                  <div className="relative w-full h-full">
+                    <ImageWithFallback
+                      src={item.thumbnail}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      itemId={item.id}
+                      onLoad={handleImageLoad}
+                      onError={handleImageError}
+                    />
+                    {/* Play icon overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/90 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                        <Play className="w-8 h-8 sm:w-10 sm:h-10 text-[#7B3F00] ml-1" fill="currentColor" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Regular image
+                  <ImageWithFallback
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    itemId={item.id}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                  />
+                )}
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
@@ -426,7 +510,18 @@ const GalleryPage = () => {
             {/* Image Container - Responsive padding */}
             <div className="w-full h-full flex items-center justify-center p-12 sm:p-16 md:p-20">
               <div className="relative max-w-full max-h-full flex items-center justify-center">
-                {imageLoadErrors[selectedImage.id] ? (
+                {selectedImage.type === 'video' ? (
+                  // Video player
+                  <video
+                    src={selectedImage.video}
+                    className="max-w-full max-h-[75vh] sm:max-h-[85vh] w-auto h-auto object-contain rounded-lg"
+                    controls
+                    autoPlay
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : imageLoadErrors[selectedImage.id] ? (
                   <div className="bg-gray-800 rounded-lg p-8 flex flex-col items-center justify-center text-gray-400">
                     <ImageOff className="w-16 h-16 mb-4" />
                     <span className="text-lg">Image unavailable</span>
