@@ -92,9 +92,13 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar - Fixed Position */}
-      <div className={`bg-white shadow-sm transition-all duration-300 ${
-        sidebarOpen ? 'w-64' : 'w-20'
-      } flex flex-col fixed left-0 top-0 h-full z-30 overflow-y-auto`}>
+      <div 
+        className={`bg-white shadow-sm transition-all duration-300 ${
+          sidebarOpen ? 'w-64' : 'w-20'
+        } flex flex-col fixed left-0 top-0 h-full z-30 overflow-y-auto hover:w-64 group`}
+        onMouseEnter={() => !sidebarOpen && setSidebarOpen(true)}
+        onMouseLeave={() => sidebarOpen && setSidebarOpen(false)}
+      >
         {/* Logo/Brand */}
         <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center">
@@ -126,10 +130,12 @@ const DashboardLayout = ({ children, userRole, userName, activeTab, setActiveTab
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                {sidebarOpen && (
-                  <span className="ml-3 text-sm font-medium">{item.name}</span>
-                )}
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className={`ml-3 text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
+                  sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
+                }`}>
+                  {item.name}
+                </span>
               </button>
             );
           })}
