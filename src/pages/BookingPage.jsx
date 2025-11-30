@@ -295,7 +295,7 @@ const BookingPage = () => {
           <div>
             <label className="block mb-1 font-medium text-[#7B3F00]">Guest Name</label>
             <input
-              name="name"
+              name="guest_name"
               value={form.guest_name}
               onChange={handleChange}
               className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('name') ? 'border-red-400' : 'border-gray-300'}`}
@@ -307,7 +307,7 @@ const BookingPage = () => {
           <div>
             <label className="block mb-1 font-medium text-[#7B3F00]">Email</label>
             <input
-              name="email"
+              name="guest_email"
               value={form.guest_email}
               onChange={handleChange}
               type="email"
@@ -320,7 +320,7 @@ const BookingPage = () => {
           <div>
             <label className="block mb-1 font-medium text-[#7B3F00]">Phone</label>
             <input
-              name="phone"
+              name="guest_phone"
               value={form.guest_phone}
               onChange={handleChange}
               className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] ${formError && formError.toLowerCase().includes('phone') ? 'border-red-400' : 'border-gray-300'}`}
