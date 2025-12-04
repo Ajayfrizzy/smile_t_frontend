@@ -859,62 +859,6 @@ const ReceptionistDashboard = () => {
   );
 
   const CheckInOut = () => {
-    const todayBookings = bookingsData.filter(booking => {
-      const today = new Date().toISOString().split('T')[0];
-      return booking.check_in?.startsWith(today) || booking.check_out?.startsWith(today);
-    });
-
-    const handleCheckIn = async (bookingId) => {
-      try {
-        const response = await apiRequest(`/bookings/${bookingId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ status: 'checked_in' })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            toast.success('Guest checked in successfully!');
-            fetchDashboardData();
-          } else {
-            toast.error(data.message || 'Failed to check in guest');
-          }
-        } else {
-          const errorData = await response.json();
-          toast.error(errorData.message || 'Failed to check in guest');
-        }
-      } catch (error) {
-        console.error('Check-in error:', error);
-        toast.error('Error checking in guest: ' + error.message);
-      }
-    };
-
-    const handleCheckOut = async (bookingId) => {
-      try {
-        // Set to 'completed' instead of 'checked_out' to avoid workflow confusion
-        const response = await apiRequest(`/bookings/${bookingId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ status: 'completed' })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            toast.success('Guest checked out successfully - booking completed!');
-            fetchDashboardData();
-          } else {
-            toast.error(data.message || 'Failed to check out guest');
-          }
-        } else {
-          const errorData = await response.json();
-          toast.error(errorData.message || 'Failed to check out guest');
-        }
-      } catch (error) {
-        console.error('Check-out error:', error);
-        toast.error('Error checking out guest: ' + error.message);
-      }
-    };
-
     // Status change handler for booking lifecycle management
     const handleStatusChange = async (bookingId, newStatus) => {
       // Define confirmation messages and types
@@ -1007,10 +951,10 @@ const ReceptionistDashboard = () => {
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-gray-900">Check-In / Check-Out Management</h3>
         
-        {todayBookings.length === 0 ? (
+        {bookingsData.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-500">No check-ins or check-outs scheduled for today</p>
+            <p className="text-gray-500">No bookings found</p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -1027,16 +971,14 @@ const ReceptionistDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {todayBookings.map((booking) => {
-                    const isCheckInDay = booking.check_in?.startsWith(new Date().toISOString().split('T')[0]);
-                    const isCheckOutDay = booking.check_out?.startsWith(new Date().toISOString().split('T')[0]);
-                    
+                  {bookingsData.map((booking) => {
                     return (
                       <tr key={booking.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{booking.guest_name}</div>
                             <div className="text-sm text-gray-500">{booking.guest_email}</div>
+                            <div className="text-sm text-gray-500">{booking.guest_phone}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1069,7 +1011,7 @@ const ReceptionistDashboard = () => {
                                 defaultValue=""
                               >
                                 <option value="" disabled>Select Action</option>
-                                {booking.status === 'confirmed' && isCheckInDay && (
+                                {booking.status === 'confirmed' && (
                                   <option value="checked_in">✓ Check In Guest</option>
                                 )}
                                 {booking.status === 'checked_in' && (
