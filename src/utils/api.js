@@ -1,5 +1,7 @@
 // API utility for making requests to the backend
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// Remove trailing slash if present to avoid double slashes in URLs
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+export const API_BASE_URL = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
 // Store CSRF token
 let csrfToken = null;
