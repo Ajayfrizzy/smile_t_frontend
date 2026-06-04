@@ -5,7 +5,7 @@ import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
 import toast from 'react-hot-toast';
 import ConfirmationModal from './ConfirmationModal';
 
-const RoomInventoryManagement = () => {
+const RoomInventoryManagement = ({ onInventoryChange = async () => {} }) => {
   const [roomInventory, setRoomInventory] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -26,6 +26,20 @@ const RoomInventoryManagement = () => {
     total_rooms: 0,
     status: 'Available'
   });
+  const currentBookedRooms = modalMode === 'edit' && currentInventory
+    ? Math.max(0, (currentInventory.total_rooms || 0) - (currentInventory.available_rooms || 0))
+    : 0;
+  const projectedAvailableRooms = (() => {
+    const parsedTotalRooms = Number(formData.total_rooms) || 0;
+    if (formData.status === 'Maintenance' || formData.status === 'Fully Booked') {
+      return 0;
+    }
+    return Math.max(0, parsedTotalRooms - currentBookedRooms);
+  })();
+  const availableRoomTypes = ROOM_TYPES.filter((roomType) => (
+    modalMode === 'edit'
+      || !roomInventory.some((inventory) => inventory.room_type_id === roomType.id)
+  ));
 
   // Fetch room inventory on component mount
   useEffect(() => {
@@ -75,10 +89,62 @@ const RoomInventoryManagement = () => {
       setLoading(true);
       setError('');
 
+      const parsedAvailableRooms = Number(formData.available_rooms);
+      const parsedTotalRooms = Number(formData.total_rooms);
+
+      if (modalMode === 'add' && !Number.isInteger(parsedAvailableRooms)) {
+        const message = 'Available rooms must be a whole number.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (!Number.isInteger(parsedTotalRooms)) {
+        const message = 'Total rooms must be a whole number.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (modalMode === 'add' && !Number.isInteger(parsedAvailableRooms)) {
+        const message = 'Room counts must be whole numbers.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if ((modalMode === 'add' && parsedAvailableRooms < 0) || parsedTotalRooms < 0) {
+        const message = 'Room counts cannot be negative.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (modalMode === 'add' && parsedAvailableRooms > parsedTotalRooms) {
+        const message = 'Available rooms cannot be greater than total rooms.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (modalMode === 'edit' && parsedTotalRooms < currentBookedRooms) {
+        const message = `Total rooms cannot be less than the ${currentBookedRooms} room(s) currently booked.`;
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (modalMode === 'add' && roomInventory.some((inventory) => inventory.room_type_id === formData.room_type_id)) {
+        const message = 'This room type already exists. Use the edit button to increase the room count.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
       const inventoryData = {
         ...formData,
-        available_rooms: parseInt(formData.available_rooms),
-        total_rooms: parseInt(formData.total_rooms)
+        available_rooms: modalMode === 'edit' ? projectedAvailableRooms : parsedAvailableRooms,
+        total_rooms: parsedTotalRooms
       };
 
       let response;
@@ -94,40 +160,22 @@ const RoomInventoryManagement = () => {
         });
       }
 
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data && data.success) {
-          // Optimistic update - update UI immediately without API call
-          if (modalMode === 'add') {
-            const newInventory = {
-              id: Date.now(), // Temporary ID
-              ...inventoryData,
-              room_type_details: getRoomTypeById(inventoryData.room_type_id),
-              is_active: true
-            };
-            setRoomInventory(prev => [...prev, newInventory]);
-          } else {
-            setRoomInventory(prev => prev.map(inventory => 
-              inventory.id === currentInventory.id 
-                ? { ...inventory, ...inventoryData }
-                : inventory
-            ));
-          }
-          closeModal();
-          
-          // Show success message
-          toast.success(`Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
-          
-          // Refresh data in background to sync with server
-          fetchRoomInventory();
-        } else {
-          setError(data?.message || `Failed to ${modalMode} room inventory`);
-        }
+      const data = response ? await response.json().catch(() => ({})) : {};
+
+      if (response && response.ok && data && data.success) {
+        await fetchRoomInventory();
+        await onInventoryChange();
+        closeModal();
+        toast.success(data.message || `Room inventory ${modalMode === 'add' ? 'added' : 'updated'} successfully!`);
       } else {
-        setError(`Failed to ${modalMode} room inventory`);
+        const message = data?.message || `Failed to ${modalMode} room inventory`;
+        setError(message);
+        toast.error(message);
       }
     } catch (err) {
-      setError(`Error ${modalMode === 'add' ? 'adding' : 'updating'} room inventory: ` + err.message);
+      const message = `Error ${modalMode === 'add' ? 'adding' : 'updating'} room inventory: ${err.message}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -145,26 +193,21 @@ const RoomInventoryManagement = () => {
           const response = await apiRequest(`/room-inventory/${inventoryId}`, {
             method: 'DELETE'
           });
+          const data = response ? await response.json().catch(() => ({})) : {};
 
-          if (response && response.ok) {
-            const data = await response.json();
-            if (data && data.success) {
-              // Optimistic delete - remove from UI immediately
-              setRoomInventory(prev => prev.filter(inventory => inventory.id !== inventoryId));
-              
-              // Show success message
-              toast.success('✅ Room inventory deleted successfully!');
-            } else {
-              setError(data?.message || 'Failed to delete room inventory');
-              toast.error(data?.message || 'Failed to delete room inventory');
-            }
+          if (response && response.ok && data && data.success) {
+            await fetchRoomInventory();
+            await onInventoryChange();
+            toast.success(data.message || 'Room inventory deleted successfully!');
           } else {
-            setError('Failed to delete room inventory');
-            toast.error('Failed to delete room inventory');
+            const message = data?.message || 'Failed to delete room inventory';
+            setError(message);
+            toast.error(message);
           }
         } catch (err) {
-          setError('Error deleting room inventory: ' + err.message);
-          toast.error('Error deleting room inventory: ' + err.message);
+          const message = 'Error deleting room inventory: ' + err.message;
+          setError(message);
+          toast.error(message);
         } finally {
           setLoading(false);
         }
@@ -173,6 +216,13 @@ const RoomInventoryManagement = () => {
   };
 
   const openModal = (mode, inventory = null) => {
+    if (mode === 'add' && availableRoomTypes.length === 0) {
+      const message = 'All room types already exist. Use the edit button to adjust room counts.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     setModalMode(mode);
     setCurrentInventory(inventory);
     if (mode === 'edit' && inventory) {
@@ -230,12 +280,16 @@ const RoomInventoryManagement = () => {
         <button
           onClick={() => openModal('add')}
           className="flex items-center px-4 py-2 bg-[#7B3F00] text-white rounded-md hover:bg-[#8B4513] transition-colors"
-          disabled={loading}
+          disabled={loading || availableRoomTypes.length === 0}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Room Type
+          {availableRoomTypes.length === 0 ? 'All Room Types Added' : 'Add Room Type'}
         </button>
       </div>
+
+      <p className="text-sm text-gray-500">
+        To increase the room count for a room type that already exists, use the edit button instead of adding a new room type.
+      </p>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -387,12 +441,17 @@ const RoomInventoryManagement = () => {
                   required
                 >
                   <option value="">Select a room type...</option>
-                  {ROOM_TYPES.map((roomType) => (
+                  {availableRoomTypes.map((roomType) => (
                     <option key={roomType.id} value={roomType.id}>
                       {roomType.room_type} - ₦{roomType.price_per_night.toLocaleString()}/night
                     </option>
                   ))}
                 </select>
+                {modalMode === 'add' && availableRoomTypes.length === 0 && (
+                  <p className="mt-2 text-sm text-amber-700">
+                    Every room type already has inventory. Use Edit to add more rooms to an existing type.
+                  </p>
+                )}
               </div>
 
               {/* Room Type Preview */}
@@ -454,7 +513,15 @@ const RoomInventoryManagement = () => {
                     max={formData.total_rooms || 999}
                     required
                     placeholder="Available rooms"
+                    disabled={modalMode === 'edit'}
                   />
+                  {modalMode === 'edit' && (
+                    <div className="mt-2 space-y-1 text-sm text-gray-500">
+                      <p>Currently booked: {currentBookedRooms}</p>
+                      <p>Available after save: {projectedAvailableRooms}</p>
+                      <p>Available rooms are recalculated from total rooms minus active bookings when you save.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

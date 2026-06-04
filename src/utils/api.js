@@ -1,6 +1,6 @@
 // API utility for making requests to the backend
 // Remove trailing slash if present to avoid double slashes in URLs
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050';
 export const API_BASE_URL = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
 // Store CSRF token
@@ -28,6 +28,39 @@ export const initCSRF = async () => {
 // Get current CSRF token
 export const getCSRFToken = () => csrfToken;
 
+const redactSensitivePayload = (body) => {
+  if (!body) {
+    return null;
+  }
+
+  try {
+    const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+    const redacted = { ...parsed };
+    const sensitiveFields = [
+      'password',
+      'current_password',
+      'new_password',
+      'confirm_password',
+      'currentPassword',
+      'newPassword',
+      'confirmPassword',
+      'token',
+      'two_factor_token',
+      'twoFactorToken'
+    ];
+
+    sensitiveFields.forEach((field) => {
+      if (field in redacted) {
+        redacted[field] = '[REDACTED]';
+      }
+    });
+
+    return redacted;
+  } catch {
+    return '[UNPARSEABLE BODY]';
+  }
+};
+
 export const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   
@@ -51,7 +84,7 @@ export const apiRequest = async (endpoint, options = {}) => {
 
   console.log(`API Request: ${method} ${url}`);
   if (finalOptions.body) {
-    console.log('Request body:', finalOptions.body);
+    console.log('Request body:', redactSensitivePayload(finalOptions.body));
   }
 
   try {

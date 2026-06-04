@@ -78,6 +78,8 @@ const SuperAdminDashboard = () => {
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [dateBasedAvailability, setDateBasedAvailability] = useState({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -134,7 +136,64 @@ const SuperAdminDashboard = () => {
       guests: 1,
       total_amount: 0
     });
+    setDateBasedAvailability({});
   };
+
+  const refreshDateBasedAvailability = async (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) {
+      setDateBasedAvailability({});
+      return;
+    }
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    if (checkInDate >= checkOutDate) {
+      setDateBasedAvailability({});
+      return;
+    }
+
+    if (roomInventory.length === 0) {
+      setDateBasedAvailability({});
+      return;
+    }
+
+    try {
+      setAvailabilityLoading(true);
+      const responses = await Promise.all(
+        roomInventory.map(async (room) => {
+          const response = await apiRequest(
+            `/room-inventory/check-availability?room_type_id=${room.room_type_id}&check_in=${checkIn}&check_out=${checkOut}`
+          );
+
+          if (!response.ok) {
+            return [room.room_type_id, { available: false, available_rooms: 0 }];
+          }
+
+          const data = await response.json();
+          return [
+            room.room_type_id,
+            {
+              available: Boolean(data?.available),
+              available_rooms: data?.available_rooms || 0
+            }
+          ];
+        })
+      );
+
+      setDateBasedAvailability(Object.fromEntries(responses));
+    } catch (error) {
+      console.error('Error refreshing room availability:', error);
+      setDateBasedAvailability({});
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showBookingModal) {
+      refreshDateBasedAvailability(bookingForm.check_in, bookingForm.check_out);
+    }
+  }, [showBookingModal, bookingForm.check_in, bookingForm.check_out, roomInventory]);
   
   const resetSalesForm = () => {
     setSalesForm({
@@ -480,7 +539,17 @@ const SuperAdminDashboard = () => {
         reference: `REF-${Date.now()}`
       };
       
-      console.log('Booking data being sent:', bookingData);
+      console.log('Booking request prepared:', {
+        room_id: bookingData.room_id,
+        guests: bookingData.guests,
+        check_in: bookingData.check_in,
+        check_out: bookingData.check_out,
+        payment_status: bookingData.payment_status,
+        status: bookingData.status,
+        has_guest_name: Boolean(bookingData.guest_name),
+        has_guest_email: Boolean(bookingData.guest_email),
+        has_guest_phone: Boolean(bookingData.guest_phone)
+      });
       
       const response = await apiRequest('/bookings', {
         method: 'POST',
@@ -709,7 +778,10 @@ const SuperAdminDashboard = () => {
         quantity: quantity
       };
       
-      console.log('Sales data being sent:', salesData);
+      console.log('Sales request prepared:', {
+        drink_id: salesData.drink_id,
+        quantity: salesData.quantity
+      });
       
       // Use the correct endpoint from backend
       const response = await apiRequest('/bar-sales', {
@@ -999,7 +1071,7 @@ const SuperAdminDashboard = () => {
       case 'staff':
         return <StaffManagement />;
       case 'room-inventory':
-        return <RoomInventoryManagement />;
+        return <RoomInventoryManagement onInventoryChange={() => fetchDashboardData(true)} />;
       case 'drinks':
         return <DrinksManagement />;
       case 'analytics':
@@ -1553,7 +1625,15 @@ const SuperAdminDashboard = () => {
                   {roomInventory.length > 0 ? (
                     /* Sort rooms by price: lowest to highest */
                     [...roomInventory]
-                      .filter(room => (room.available_rooms || 0) > 0)
+                      .filter(room => {
+                        const availability = bookingForm.check_in && bookingForm.check_out
+                          ? dateBasedAvailability[room.room_type_id]
+                          : null;
+                        const visibleAvailableRooms = availability
+                          ? availability.available_rooms
+                          : (room.available_rooms || 0);
+                        return visibleAvailableRooms > 0;
+                      })
                       .sort((a, b) => {
                         const roomTypeA = getRoomTypeById(a.room_type_id);
                         const roomTypeB = getRoomTypeById(b.room_type_id);
@@ -1563,9 +1643,15 @@ const SuperAdminDashboard = () => {
                       })
                       .map((room) => {
                       const roomType = getRoomTypeById(room.room_type_id);
+                      const availability = bookingForm.check_in && bookingForm.check_out
+                        ? dateBasedAvailability[room.room_type_id]
+                        : null;
+                      const visibleAvailableRooms = availability
+                        ? availability.available_rooms
+                        : (room.available_rooms || 0);
                       return (
                         <option key={room.id} value={room.room_type_id}>
-                          {roomType?.room_type || 'Unknown Room'} - ₦{roomType?.price_per_night?.toLocaleString() || '0'}/night ({room.available_rooms || 0} available)
+                          {roomType?.room_type || 'Unknown Room'} - ₦{roomType?.price_per_night?.toLocaleString() || '0'}/night ({visibleAvailableRooms} available)
                         </option>
                       );
                     })
@@ -1573,10 +1659,26 @@ const SuperAdminDashboard = () => {
                     <option value="" disabled>No rooms available</option>
                   )}
                 </select>
+                {availabilityLoading && bookingForm.check_in && bookingForm.check_out && (
+                  <p className="text-sm text-gray-500 mt-1">Checking availability for selected dates...</p>
+                )}
+                {bookingForm.check_in && bookingForm.check_out && !availabilityLoading && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Room counts shown here are for the selected dates.
+                  </p>
+                )}
                 {roomInventory.length === 0 && (
                   <p className="text-sm text-red-600 mt-1">No room inventory found. Please add rooms first.</p>
                 )}
-                {roomInventory.length > 0 && roomInventory.filter(room => (room.available_rooms || 0) > 0).length === 0 && (
+                {roomInventory.length > 0 && !availabilityLoading && [...roomInventory].filter(room => {
+                  const availability = bookingForm.check_in && bookingForm.check_out
+                    ? dateBasedAvailability[room.room_type_id]
+                    : null;
+                  const visibleAvailableRooms = availability
+                    ? availability.available_rooms
+                    : (room.available_rooms || 0);
+                  return visibleAvailableRooms > 0;
+                }).length === 0 && (
                   <p className="text-sm text-red-600 mt-1">All rooms are currently booked.</p>
                 )}
               </div>

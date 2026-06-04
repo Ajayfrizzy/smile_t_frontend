@@ -178,7 +178,10 @@ const BarmenDashboard = () => {
         quantity: quantity
       };
       
-      console.log('Sales data being sent:', salesData);
+      console.log('Sales request prepared:', {
+        drink_id: salesData.drink_id,
+        quantity: salesData.quantity
+      });
       
       // Use the correct endpoint from backend
       const response = await apiRequest('/bar-sales', {
