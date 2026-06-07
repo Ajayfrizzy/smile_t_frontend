@@ -48,14 +48,16 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-[#FFD700]" />
-                <span className="text-white text-sm">08053233660, 08021125918 & 08034584910</span>
+                {/* <span className="text-white text-sm">08053233660, 08021125918 & 08034584910</span> */}
+                <span className="text-white text-sm">08137174181 & 09058838521</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-[#FFD700]" />
                 <span className="text-white text-sm">
                   {/* <a href="mailto:Smiletcontinentalhotel1@gmail.com" className="hover:underline">Smiletcontinentalhotel1@gmail.com</a><br />
                   <a href="mailto:Smiletcontinentalhotel@gmail.com" className="hover:underline">Smiletcontinentalhotel@gmail.com</a> */}
-                  <a href="mailto:info@smile-tcontinental.com" className="hover:underline">info@smile-tcontinental.com</a>
+                  {/* <a href="mailto:info@smile-tcontinental.com" className="hover:underline">info@smile-tcontinental.com</a> */}
+                  <a href="mailto:smiletcontinentalhotel@gmail.com" className="hover:underline">smiletcontinentalhotel@gmail.com</a>
                 </span>
               </div>
             </div>
@@ -84,7 +86,7 @@ const Footer = () => {
 
   <div className="border-t border-[#FFD700] mt-12 pt-8 text-center">
     <p className="text-[#FFD700] text-sm">
-            © 2024 Smile-T Continental Hotel. All rights reserved.
+            © 2026 Smile-T Continental Hotel. All rights reserved.
           </p>
         </div>
       </div>

@@ -42,25 +42,17 @@ const ContactPage = () => {
                   <a
                     href="tel:+2348053233660"
                     className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
-                    aria-label="Call 08053233660"
+                    aria-label="Call 08137174181"
                   >
-                    08053233660
+                    08137174181
                   </a>
                   ,
                   <a
                     href="tel:+2348021125918"
                     className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
-                    aria-label="Call 08021125918"
+                    aria-label="Call 09058838521"
                   >
-                    08021125918
-                  </a>{" "}
-                  &
-                  <a
-                    href="tel:+2348034584910"
-                    className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
-                    aria-label="Call 08034584910"
-                  >
-                    08034584910
+                  09058838521
                   </a>
                 </div>
               </div>
@@ -75,14 +67,14 @@ const ContactPage = () => {
               <div>
                 <span className="font-semibold text-[#7B3F00]">Email:</span>
                 <br />
-                <a
+                {/* <a
                   href="mailto:info@smile-tcontinental.com"
                   className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00] block"
                   aria-label="Email info@smile-tcontinental.com"
                 >
                   Info@smile-tcontinental.com
-                </a>
-                {/*<a
+                </a> */}
+                <a
                   href="mailto:Smiletcontinentalhotel1@gmail.com"
                   className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00] block"
                   aria-label="Email Smiletcontinentalhotel1@gmail.com"
@@ -95,7 +87,7 @@ const ContactPage = () => {
                   aria-label="Email Smiletcontinentalhotel@gmail.com"
                 >
                   Smiletcontinentalhotel@gmail.com
-                </a>*/}
+                </a>
               </div>
             </div>
           </div>
