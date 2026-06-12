@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
 import ConfirmationModal from '../components/ConfirmationModal';
+import PaginationControls, { paginateItems } from '../components/PaginationControls';
 import { 
   Calendar, 
   Users, 
@@ -27,6 +28,7 @@ import toast from 'react-hot-toast';
 
 // Status-based booking system constants
 const ROOM_FREEING_STATUSES = ['checked_out', 'completed', 'cancelled', 'no_show', 'voided'];
+const BOOKINGS_PAGE_SIZE = 10;
 
 const STATUS_LABELS = {
   pending: 'Pending Payment',
@@ -65,6 +67,8 @@ const ReceptionistDashboard = () => {
   const [roomInventory, setRoomInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingFilter, setBookingFilter] = useState('all');
+  const [bookingPage, setBookingPage] = useState(1);
+  const [checkInPage, setCheckInPage] = useState(1);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -95,6 +99,14 @@ const ReceptionistDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookingFilter, bookingsData.length]);
+
+  useEffect(() => {
+    setCheckInPage(1);
+  }, [bookingsData.length]);
 
   // Auto-refresh bookings every 45 seconds
   useEffect(() => {
@@ -520,6 +532,7 @@ const ReceptionistDashboard = () => {
       }
       return true;
     });
+    const paginatedBookings = paginateItems(filteredBookings, bookingPage, BOOKINGS_PAGE_SIZE);
 
     return (
       <div className="space-y-6">
@@ -611,7 +624,7 @@ const ReceptionistDashboard = () => {
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((booking, index) => {
+                paginatedBookings.map((booking, index) => {
                   return (
                     <tr key={booking.id || index}>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -676,6 +689,13 @@ const ReceptionistDashboard = () => {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          currentPage={bookingPage}
+          totalItems={filteredBookings.length}
+          pageSize={BOOKINGS_PAGE_SIZE}
+          onPageChange={setBookingPage}
+          itemLabel="bookings"
+        />
       </div>
     </div>
   );
@@ -959,6 +979,8 @@ const ReceptionistDashboard = () => {
   );
 
   const CheckInOut = () => {
+    const paginatedCheckInBookings = paginateItems(bookingsData, checkInPage, BOOKINGS_PAGE_SIZE);
+
     // Status change handler for booking lifecycle management
     const handleStatusChange = async (bookingId, newStatus) => {
       // Define confirmation messages and types
@@ -1071,7 +1093,7 @@ const ReceptionistDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {bookingsData.map((booking) => {
+                  {paginatedCheckInBookings.map((booking) => {
                     return (
                       <tr key={booking.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1135,6 +1157,13 @@ const ReceptionistDashboard = () => {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              currentPage={checkInPage}
+              totalItems={bookingsData.length}
+              pageSize={BOOKINGS_PAGE_SIZE}
+              onPageChange={setCheckInPage}
+              itemLabel="bookings"
+            />
           </div>
         )}
       </div>

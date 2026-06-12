@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
+import PaginationControls, { paginateItems } from '../components/PaginationControls';
 import { 
   Calendar, 
   DollarSign,
@@ -15,6 +16,8 @@ import { getRoomTypeById } from '../utils/roomTypes';
 import toast from 'react-hot-toast';
 
 // Status-based booking system constants (view-only for supervisor)
+const BOOKINGS_PAGE_SIZE = 10;
+
 const STATUS_LABELS = {
   pending: 'Pending Payment',
   confirmed: 'Confirmed',
@@ -43,6 +46,7 @@ const SupervisorDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [bookingsData, setBookingsData] = useState([]);
+  const [bookingPage, setBookingPage] = useState(1);
   const [barSalesData, setBarSalesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -64,6 +68,10 @@ const SupervisorDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookingsData.length]);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -636,88 +644,100 @@ const SupervisorDashboard = () => {
     }
   };
 
-  const BookingsView = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">All Bookings</h3>
-        <button
-          onClick={fetchDashboardData}
-          className="p-2 text-gray-500 hover:text-gray-700"
-        >
-          <RefreshCw className="w-5 h-5" />
-        </button>
-      </div>
+  const BookingsView = () => {
+    const filteredBookings = filterBookings();
+    const paginatedBookings = paginateItems(filteredBookings, bookingPage, BOOKINGS_PAGE_SIZE);
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filterBookings().map((booking, index) => {
-                return (
-                  <tr key={booking.id || index}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{booking.guest_name}</div>
-                        <div className="text-sm text-gray-500">{booking.guest_email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {booking.room_type_name || booking.room_type || 'Unknown Room'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {booking.check_in}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {booking.check_out}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      }) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        {getBookingSourceIcon(booking.payment_method)}
-                        <span className="text-sm text-gray-600">
-                          {booking.payment_method === 'manual' ? 'Walk-in' : 'Online'}
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">All Bookings</h3>
+          <button
+            onClick={fetchDashboardData}
+            className="p-2 text-gray-500 hover:text-gray-700"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedBookings.map((booking, index) => {
+                  return (
+                    <tr key={booking.id || index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{booking.guest_name}</div>
+                          <div className="text-sm text-gray-500">{booking.guest_email}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {booking.room_type_name || booking.room_type || 'Unknown Room'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {booking.check_in}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {booking.check_out}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          {getBookingSourceIcon(booking.payment_method)}
+                          <span className="text-sm text-gray-600">
+                            {booking.payment_method === 'manual' ? 'Walk-in' : 'Online'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                          {STATUS_LABELS[booking.status] || booking.status}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
-                        {STATUS_LABELS[booking.status] || booking.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₦{(booking.total_amount || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {booking.transaction_ref}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₦{(booking.total_amount || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {booking.transaction_ref}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <PaginationControls
+            currentPage={bookingPage}
+            totalItems={filteredBookings.length}
+            pageSize={BOOKINGS_PAGE_SIZE}
+            onPageChange={setBookingPage}
+            itemLabel="bookings"
+          />
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const BarSalesView = () => (
     <div className="space-y-6">

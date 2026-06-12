@@ -7,6 +7,7 @@ import TransactionsAnalytics from '../components/TransactionsAnalytics';
 import ConfirmationModal from '../components/ConfirmationModal';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 import PasswordChangeModal from '../components/PasswordChangeModal';
+import PaginationControls, { paginateItems } from '../components/PaginationControls';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { ROOM_TYPES, getRoomTypeById } from '../utils/roomTypes';
@@ -27,6 +28,7 @@ import { apiRequest } from '../utils/api';
 
 // Status-based booking system constants
 const ROOM_FREEING_STATUSES = ['checked_out', 'completed', 'cancelled', 'no_show', 'voided'];
+const BOOKINGS_PAGE_SIZE = 10;
 
 const STATUS_LABELS = {
   pending: 'Pending Payment',
@@ -73,6 +75,7 @@ const SuperAdminDashboard = () => {
   const [barSalesData, setBarSalesData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [bookingFilter, setBookingFilter] = useState('all');
+  const [bookingPage, setBookingPage] = useState(1);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [cachedData, setCachedData] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState(null);
@@ -120,6 +123,10 @@ const SuperAdminDashboard = () => {
     currency: 'NGN',
     timezone: 'Africa/Lagos'
   });
+
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookingFilter, bookingsData.length]);
 
   // Get user info from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1076,7 +1083,19 @@ const SuperAdminDashboard = () => {
         return <DrinksManagement />;
       case 'analytics':
         return <TransactionsAnalytics bookingsData={bookingsData} barSalesData={barSalesData} />;
-      case 'bookings':
+      case 'bookings': {
+        const filteredBookings = bookingsData.filter(booking => {
+          if (bookingFilter === 'all') return true;
+          if (bookingFilter === 'manual') {
+            return booking.created_by_role === 'superadmin' || booking.created_by_role === 'receptionist' || booking.payment_method === 'manual';
+          }
+          if (bookingFilter === 'online') {
+            return booking.created_by_role === 'client' || booking.payment_method === 'flutterwave';
+          }
+          return true;
+        });
+        const paginatedBookings = paginateItems(filteredBookings, bookingPage, BOOKINGS_PAGE_SIZE);
+
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Bookings Management</h3>
@@ -1128,35 +1147,25 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>
               <div className="border-t pt-4">
-                {bookingsData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {bookingsData
-                          .filter(booking => {
-                            if (bookingFilter === 'all') return true;
-                            if (bookingFilter === 'manual') {
-                              return booking.created_by_role === 'superadmin' || booking.created_by_role === 'receptionist' || booking.payment_method === 'manual';
-                            }
-                            if (bookingFilter === 'online') {
-                              return booking.created_by_role === 'client' || booking.payment_method === 'flutterwave';
-                            }
-                            return true;
-                          })
-                          .map((booking, index) => {
+                {filteredBookings.length > 0 ? (
+                  <div className="overflow-hidden rounded-lg border border-gray-200">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Created</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paginatedBookings.map((booking, index) => {
                           // Room type is now provided directly by backend
                           return (
                             <tr key={booking.id || index}>
@@ -1264,8 +1273,16 @@ const SuperAdminDashboard = () => {
                             </tr>
                           );
                         })}
-                      </tbody>
-                    </table>
+                        </tbody>
+                      </table>
+                    </div>
+                    <PaginationControls
+                      currentPage={bookingPage}
+                      totalItems={filteredBookings.length}
+                      pageSize={BOOKINGS_PAGE_SIZE}
+                      onPageChange={setBookingPage}
+                      itemLabel="bookings"
+                    />
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
@@ -1292,6 +1309,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         );
+      }
       case 'bar-sales':
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
