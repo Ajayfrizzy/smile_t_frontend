@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
 import Button from "../components/Button";
@@ -10,6 +11,7 @@ const generateReference = () =>
   `BK-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
 const BookingPage = () => {
+  const navigate = useNavigate();
   const user = null;
   const authLoading = false;
 
@@ -211,6 +213,24 @@ const BookingPage = () => {
             email: form.guest_email,
             phone_number: form.guest_phone,
             name: form.guest_name,
+          },
+          callback: (paymentResponse) => {
+            const paymentStatus = paymentResponse?.status;
+            const transactionId = paymentResponse?.transaction_id || paymentResponse?.id;
+            const txRef = paymentResponse?.tx_ref || reference;
+
+            if (paymentStatus === "successful" || paymentStatus === "completed") {
+              const params = new URLSearchParams({
+                status: "successful",
+                tx_ref: txRef,
+              });
+
+              if (transactionId) {
+                params.set("transaction_id", String(transactionId));
+              }
+
+              navigate(`/booking-success?${params.toString()}`);
+            }
           },
           // Flutterwave will redirect to this URL after payment
           // The BookingSuccessPage will handle verification

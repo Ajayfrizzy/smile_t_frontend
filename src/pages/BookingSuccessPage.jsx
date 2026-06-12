@@ -17,8 +17,10 @@ const BookingSuccessPage = () => {
       const txRef = searchParams.get('tx_ref');
       const transactionId = searchParams.get('transaction_id');
 
+      const normalizedStatus = (status || '').toLowerCase();
+
       // Check if payment was successful
-      if (status !== 'successful') {
+      if (!['successful', 'success', 'completed'].includes(normalizedStatus)) {
         setError('Payment was not successful. Please try again.');
         setLoading(false);
         return;
@@ -43,25 +45,27 @@ const BookingSuccessPage = () => {
         const result = await response.json();
 
         if (response.ok && result.status === 'success') {
-          // Payment verified successfully
-          // Fetch booking details
-          const bookingResponse = await apiRequest(`/bookings/by-reference/${txRef}`);
-          
-          if (bookingResponse.ok) {
-            const bookingData = await bookingResponse.json();
-            setBooking(bookingData.booking || bookingData);
-          } else {
-            // Create a basic booking object from the payment data
-            setBooking({
-              transaction_ref: txRef,
-              payment_status: 'paid',
-              status: 'confirmed',
-              total_amount: result.data?.amount || 0,
-              reference: txRef,
-            });
+          if (result.booking) {
+            setBooking(result.booking);
+          } else if (txRef) {
+            // Payment verified successfully; fetch booking details as a fallback.
+            const bookingResponse = await apiRequest(`/bookings/by-reference/${txRef}`);
+            
+            if (bookingResponse.ok) {
+              const bookingData = await bookingResponse.json();
+              setBooking(bookingData.booking || bookingData);
+            } else {
+              setBooking({
+                transaction_ref: txRef,
+                payment_status: 'paid',
+                status: 'confirmed',
+                total_amount: result.data?.amount || 0,
+                reference: txRef,
+              });
+            }
           }
         } else {
-          setError('Payment verification failed. Please contact support with reference: ' + txRef);
+          setError((result.message || 'Payment verification failed.') + ' Please contact support with reference: ' + (txRef || transactionId));
         }
       } catch (err) {
         console.error('Verification error:', err);
