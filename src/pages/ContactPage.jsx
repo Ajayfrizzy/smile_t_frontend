@@ -40,7 +40,7 @@ const ContactPage = () => {
                 <br />
                 <div className="flex flex-wrap gap-1">
                   <a
-                    href="tel:+2348053233660"
+                    href="tel:+2348137174181"
                     className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
                     aria-label="Call 08137174181"
                   >
@@ -48,7 +48,7 @@ const ContactPage = () => {
                   </a>
                   ,
                   <a
-                    href="tel:+2348021125918"
+                    href="tel:+2349058838521"
                     className="text-[#7B3F00] hover:underline focus:outline-none focus:ring-2 focus:ring-[#7B3F00]"
                     aria-label="Call 09058838521"
                   >

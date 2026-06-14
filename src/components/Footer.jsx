@@ -48,7 +48,6 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-[#FFD700]" />
-                {/* <span className="text-white text-sm">08053233660, 08021125918 & 08034584910</span> */}
                 <span className="text-white text-sm">08137174181 & 09058838521</span>
               </div>
               <div className="flex items-center space-x-3">
