@@ -8,7 +8,7 @@ import { apiRequest } from "../utils/api";
 import { loadFlutterwave, openFlutterwaveCheckout } from "../utils/flutterwave";
 
 const generateReference = () =>
-  `BK-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+  `BK-${crypto.randomUUID().replaceAll('-', '').toUpperCase()}`;
 
 const BookingPage = () => {
   const navigate = useNavigate();

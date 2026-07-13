@@ -48,21 +48,13 @@ const BookingSuccessPage = () => {
           if (result.booking) {
             setBooking(result.booking);
           } else if (txRef) {
-            // Payment verified successfully; fetch booking details as a fallback.
-            const bookingResponse = await apiRequest(`/bookings/by-reference/${txRef}`);
-            
-            if (bookingResponse.ok) {
-              const bookingData = await bookingResponse.json();
-              setBooking(bookingData.booking || bookingData);
-            } else {
-              setBooking({
-                transaction_ref: txRef,
-                payment_status: 'paid',
-                status: 'confirmed',
-                total_amount: result.data?.amount || 0,
-                reference: txRef,
-              });
-            }
+            setBooking({
+              transaction_ref: txRef,
+              payment_status: 'paid',
+              status: 'confirmed',
+              total_amount: result.data?.amount || 0,
+              reference: txRef,
+            });
           }
         } else {
           setError((result.message || 'Payment verification failed.') + ' Please contact support with reference: ' + (txRef || transactionId));

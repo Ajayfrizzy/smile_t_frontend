@@ -88,7 +88,20 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    const response = await fetch(url, finalOptions);
+    let response = await fetch(url, finalOptions);
+
+    // A token can expire while the SPA remains open. Refresh once and replay the
+    // request so users do not lose a form submission to CSRF token rotation.
+    if (response.status === 403 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      const errorBody = await response.clone().json().catch(() => null);
+      if (errorBody?.message === 'Invalid or expired CSRF token') {
+        await initCSRF();
+        if (csrfToken) {
+          finalOptions.headers['X-CSRF-Token'] = csrfToken;
+          response = await fetch(url, finalOptions);
+        }
+      }
+    }
     console.log(`API Response: ${response.status} ${response.statusText}`);
     return response;
   } catch (error) {

@@ -1,51 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../utils/api";
+import { ROOM_TYPES } from "../utils/roomTypes";
 
 // Fallback room data in case API is not available
 // Sorted by price: lowest to highest
-const fallbackRooms = [
-  {
-    room_type: "Classic Single",
-    price_per_night: 24900,
-    max_occupancy: 2,
-    amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
-    description: "Just a bed, smart TV and active intercom.",
-    image: "/assets/images/classic_single_room.jpg",
-  },
-  {
-    room_type: "Deluxe",
-    price_per_night: 30500,
-    max_occupancy: 2,
-    amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
-    description: "Just a bed, smart TV and active intercom.",
-    image: "assets/images/deluxe_room.jpg",
-  },
-  {
-    room_type: "Deluxe Large",
-    price_per_night: 35900,
-    max_occupancy: 2,
-    amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
-    description: "Just a bed, smart TV and active intercom.",
-    image: "/assets/images/deluxe_large_room.jpg",
-  },
-  {
-    room_type: "Business Suite",
-    price_per_night: 49900,
-    max_occupancy: 4,
-    amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (2 guests)",
-    description: "Sitting room and bedroom with quality sofa, intercom and smart TV in each room.",
-    image: "assets/images/business_suite_room.jpg",
-  },
-  {
-    room_type: "Executive Suite",
-    price_per_night: 54900,
-    max_occupancy: 4,
-    amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (2 guests)",
-    description: "Sitting room and bedroom with quality sofa, intercom and smart TV in each room.",
-    image: "assets/images/executive_suite_room.jpg",
-  },
-];
+const fallbackRooms = ROOM_TYPES;
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState(fallbackRooms); // Start with fallback data immediately
