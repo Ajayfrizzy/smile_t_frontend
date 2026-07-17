@@ -3,7 +3,7 @@ export const ROOM_TYPES = [
   {
     id: 'classic-single',
     room_type: "Classic Single",
-    price_per_night: 29900,
+    price_per_night: 32000,
     max_occupancy: 2,
     amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
     description: "Just a bed, smart TV and active intercom.",
@@ -12,7 +12,7 @@ export const ROOM_TYPES = [
   {
     id: 'deluxe',
     room_type: "Deluxe",
-    price_per_night: 35500,
+    price_per_night: 36000,
     max_occupancy: 2,
     amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
     description: "Just a bed, smart TV and active intercom.",
@@ -21,7 +21,7 @@ export const ROOM_TYPES = [
   {
     id: 'deluxe-large',
     room_type: "Deluxe Large",
-    price_per_night: 40900,
+    price_per_night: 40000,
     max_occupancy: 2,
     amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (1 guest)",
     description: "Just a bed, smart TV and active intercom.",
@@ -30,7 +30,7 @@ export const ROOM_TYPES = [
   {
     id: 'business-suite',
     room_type: "Business Suite",
-    price_per_night: 54900,
+    price_per_night: 55000,
     max_occupancy: 4,
     amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (2 guests)",
     description: "Sitting room and bedroom with quality sofa, intercom and smart TV in each room.",
@@ -39,7 +39,7 @@ export const ROOM_TYPES = [
   {
     id: 'executive-suite',
     room_type: "Executive Suite",
-    price_per_night: 59900,
+    price_per_night: 65000,
     max_occupancy: 4,
     amenities: "Complimentary breakfast, free Wi-Fi, gym and pool (2 guests)",
     description: "Sitting room and bedroom with quality sofa, intercom and smart TV in each room.",
